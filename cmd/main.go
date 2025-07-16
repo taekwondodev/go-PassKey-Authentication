@@ -1,12 +1,17 @@
 package main
 
-import "go-PassKey-Authentication/internal/config"
+import (
+	"go-PassKey-Authentication/internal/config"
+	"go-PassKey-Authentication/internal/db"
+	"go-PassKey-Authentication/internal/repository"
+)
 
 func main() {
-	db := Must(config.New())
-	Check(db.Init())
-	defer db.Close()
+	pool := Must(config.Connect())
+	defer pool.Close()
 
+	queries := db.New(pool)
+	userRepo := repository.New(queries)
 }
 
 func Must[T any](v T, err error) T {
@@ -14,10 +19,4 @@ func Must[T any](v T, err error) T {
 		panic(err)
 	}
 	return v
-}
-
-func Check(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
