@@ -1,6 +1,6 @@
 package main
 
-import "go-PassKey-Authentication/config"
+import "go-PassKey-Authentication/internal/config"
 
 func main() {
 	db := Must(config.New())
