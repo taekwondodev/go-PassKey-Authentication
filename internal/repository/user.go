@@ -11,10 +11,12 @@ import (
 
 type UserRepository interface {
 	SaveUser(ctx context.Context, username string) (db.User, error)
-	SaveSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
 	GetUserByUsername(ctx context.Context, username string) (db.User, error)
+	SaveRegisterSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
+	SaveLoginSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
 	GetSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error)
 	SaveCredentials(ctx context.Context, userID uuid.UUID, credentials db.Credential) error
+	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]db.Credential, error)
 	DeleteSession(ctx context.Context, sessionID uuid.UUID) error
 }
 

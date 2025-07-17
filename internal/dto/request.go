@@ -2,7 +2,7 @@ package dto
 
 import "encoding/json"
 
-type BeginRegisterRequest struct {
+type BeginRequest struct {
 	Username string `json:"username"`
 }
 

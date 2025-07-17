@@ -27,9 +27,8 @@ func New(authService service.AuthService) AuthController {
 // da cambiaro con encoding/jsonv2
 
 func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error {
-	var req dto.BeginRegisterRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	var req dto.BeginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return customerrors.ErrBadRequest
 	}
 
@@ -43,8 +42,7 @@ func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error
 
 func (c *controller) FinishRegister(w http.ResponseWriter, r *http.Request) error {
 	var req dto.FinishRegisterRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return customerrors.ErrBadRequest
 	}
 
@@ -57,10 +55,17 @@ func (c *controller) FinishRegister(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (c *controller) BeginLogin(w http.ResponseWriter, r *http.Request) error {
-	// richiesta deve essere username
-	// Risposta generata da webAuthn.BeginLogin(user)
+	var req dto.BeginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return customerrors.ErrBadRequest
+	}
 
-	return nil
+	res, err := c.authService.BeginLogin(r.Context(), req.Username)
+	if err != nil {
+		return err
+	}
+
+	return c.respond(w, http.StatusAccepted, res)
 }
 
 func (c *controller) FinishLogin(w http.ResponseWriter, r *http.Request) error {
@@ -68,21 +73,6 @@ func (c *controller) FinishLogin(w http.ResponseWriter, r *http.Request) error {
 	// messaggio di conferma, token JWT
 
 	return nil
-}
-
-func (c *controller) Refresh(w http.ResponseWriter, r *http.Request) error {
-	var req dto.RefreshTokenRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		return customerrors.ErrBadRequest
-	}
-
-	res, err := c.authService.Refresh(req)
-	if err != nil {
-		return err
-	}
-
-	return c.respond(w, http.StatusOK, res)
 }
 
 func (c *controller) respond(w http.ResponseWriter, status int, data any) error {

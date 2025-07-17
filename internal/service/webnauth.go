@@ -14,8 +14,9 @@ import (
 )
 
 type AuthService interface {
-	BeginRegister(ctx context.Context, username string) (*dto.BeginRegisterResponse, error)
+	BeginRegister(ctx context.Context, username string) (*dto.BeginResponse, error)
 	FinishRegister(ctx context.Context, req dto.FinishRegisterRequest) (*dto.MessageResponse, error)
+	BeginLogin(ctx context.Context, username string) (*dto.BeginResponse, error)
 	Refresh(req dto.RefreshTokenRequest) (*dto.MessageResponse, error)
 }
 
@@ -28,7 +29,7 @@ func New(repo repository.UserRepository, jwt pkg.Token) AuthService {
 	return &service{repo: repo, jwt: jwt}
 }
 
-func (s *service) BeginRegister(ctx context.Context, username string) (*dto.BeginRegisterResponse, error) {
+func (s *service) BeginRegister(ctx context.Context, username string) (*dto.BeginResponse, error) {
 	user, err := s.repo.SaveUser(ctx, username)
 	webauthnUser := models.New(user, nil)
 	opts, sessionData, err := webauthn.WebAuthn.BeginRegistration(webauthnUser)
@@ -36,12 +37,12 @@ func (s *service) BeginRegister(ctx context.Context, username string) (*dto.Begi
 		return nil, customerrors.ErrInternalServer
 	}
 
-	sessionID, err := s.repo.SaveSession(ctx, *webauthnUser, sessionData)
+	sessionID, err := s.repo.SaveRegisterSession(ctx, *webauthnUser, sessionData)
 	if err != nil {
 		return nil, customerrors.ErrInternalServer
 	}
 
-	return &dto.BeginRegisterResponse{
+	return &dto.BeginResponse{
 		Options:   opts,
 		SessionID: sessionID.String(),
 	}, nil
@@ -84,5 +85,33 @@ func (s *service) FinishRegister(ctx context.Context, req dto.FinishRegisterRequ
 
 	return &dto.MessageResponse{
 		Message: "Registration completed successfully!",
+	}, nil
+}
+
+func (s *service) BeginLogin(ctx context.Context, username string) (*dto.BeginResponse, error) {
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	creds, err := s.repo.GetCredentialsByUserID(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	webauthnUser := models.New(user, creds)
+	opts, sessionData, err := webauthn.WebAuthn.BeginLogin(webauthnUser)
+	if err != nil {
+		return nil, customerrors.ErrInternalServer
+	}
+
+	sessionID, err := s.repo.SaveLoginSession(ctx, *webauthnUser, sessionData)
+	if err != nil {
+		return nil, customerrors.ErrInternalServer
+	}
+
+	return &dto.BeginResponse{
+		Options:   opts,
+		SessionID: sessionID.String(),
 	}, nil
 }

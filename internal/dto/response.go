@@ -1,6 +1,6 @@
 package dto
 
-type BeginRegisterResponse struct {
+type BeginResponse struct {
 	Options   any    `json:"options"`
 	SessionID string `json:"session_id"`
 }

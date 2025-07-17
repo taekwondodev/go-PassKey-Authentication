@@ -25,3 +25,12 @@ func (r *repository) SaveCredentials(ctx context.Context, userID uuid.UUID, cred
 
 	return nil
 }
+
+func (r *repository) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]db.Credential, error) {
+	credentials, err := r.queries.GetCredentialsByUserID(ctx, userID)
+	if err != nil {
+		return nil, customerrors.ErrInternalServer
+	}
+
+	return credentials, nil
+}
