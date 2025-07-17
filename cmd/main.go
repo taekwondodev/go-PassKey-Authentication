@@ -10,6 +10,8 @@ func main() {
 	pool := Must(config.Connect())
 	defer pool.Close()
 
+	webauthn := Must(config.InitWebAuthn())
+
 	queries := db.New(pool)
 	userRepo := repository.New(queries)
 }

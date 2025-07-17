@@ -11,7 +11,7 @@ import (
 func Connect() (*pgxpool.Pool, error) {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		return nil, fmt.Errorf("no DATABASE_URL in environment")
+		return nil, fmt.Errorf("DATABASE_URL not defined")
 	}
 
 	ctx := context.Background()

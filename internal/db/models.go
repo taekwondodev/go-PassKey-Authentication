@@ -4,7 +4,36 @@
 
 package db
 
+import (
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type Credential struct {
+	ID                string
+	UserID            int32
+	PublicKey         []byte
+	SignCount         int64
+	Transports        []string
+	Aaguid            pgtype.UUID
+	AttestationFormat pgtype.Text
+	CreatedAt         pgtype.Timestamp
+}
+
 type User struct {
-	ID   int32
-	Name string
+	ID        uuid.UUID
+	Username  string
+	Role      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	IsActive  bool
+}
+
+type WebauthnSession struct {
+	ID        uuid.UUID
+	UserID    int32
+	Data      []byte
+	Purpose   string
+	CreatedAt pgtype.Timestamp
+	ExpiresAt pgtype.Timestamp
 }

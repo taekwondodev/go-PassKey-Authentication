@@ -17,15 +17,13 @@ func (e *Error) Error() string {
 
 var (
 	ErrUsernameAlreadyExists = &Error{Code: 409, Message: "username already exists"}
-	ErrEmailAlreadyExists    = &Error{Code: 409, Message: "email already exists"}
+	ErrSessionIdInvalid      = &Error{Code: 401, Message: "session id not valid"}
 	ErrInvalidCredentials    = &Error{Code: 401, Message: "invalid credentials"}
+	ErrSessionNotFound       = &Error{Code: 404, Message: "session not found"}
 	ErrUserNotFound          = &Error{Code: 404, Message: "user not found"}
 	ErrHttpMethodNotAllowed  = &Error{Code: 405, Message: "http method not allowed"}
 	ErrBadRequest            = &Error{Code: 400, Message: "bad request"}
 	ErrInternalServer        = &Error{Code: 500, Message: "internal server error"}
-	ErrDbUnreacheable        = &Error{Code: 503, Message: "database unreachable"}
-	ErrDbSSLHandshakeFailed  = &Error{Code: 502, Message: "database SSL handshake failed"}
-	ErrDbTimeout             = &Error{Code: 504, Message: "database timeout"}
 )
 
 func GetStatus(err error) int {
