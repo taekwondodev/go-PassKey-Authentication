@@ -14,10 +14,12 @@ type UserRepository interface {
 	GetUserByUsername(ctx context.Context, username string) (db.User, error)
 	SaveRegisterSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
 	SaveLoginSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
-	GetSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error)
+	GetRegisterSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error)
+	GetLoginSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error)
+	DeleteSession(ctx context.Context, sessionID uuid.UUID) error
 	SaveCredentials(ctx context.Context, userID uuid.UUID, credentials db.Credential) error
 	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]db.Credential, error)
-	DeleteSession(ctx context.Context, sessionID uuid.UUID) error
+	UpdateCredentials(ctx context.Context, credential db.Credential) error
 }
 
 type repository struct {

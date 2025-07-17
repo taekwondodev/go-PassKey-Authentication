@@ -15,9 +15,10 @@ import (
 
 type AuthService interface {
 	BeginRegister(ctx context.Context, username string) (*dto.BeginResponse, error)
-	FinishRegister(ctx context.Context, req dto.FinishRegisterRequest) (*dto.MessageResponse, error)
+	FinishRegister(ctx context.Context, req dto.FinishRequest) (*dto.MessageResponse, error)
 	BeginLogin(ctx context.Context, username string) (*dto.BeginResponse, error)
-	Refresh(req dto.RefreshTokenRequest) (*dto.MessageResponse, error)
+	FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.TokenResponse, error)
+	Refresh(req dto.RefreshTokenRequest) (*dto.TokenResponse, error)
 }
 
 type service struct {
@@ -48,7 +49,7 @@ func (s *service) BeginRegister(ctx context.Context, username string) (*dto.Begi
 	}, nil
 }
 
-func (s *service) FinishRegister(ctx context.Context, req dto.FinishRegisterRequest) (*dto.MessageResponse, error) {
+func (s *service) FinishRegister(ctx context.Context, req dto.FinishRequest) (*dto.MessageResponse, error) {
 	sessionUUID, err := uuid.Parse(req.SessionID)
 	if err != nil {
 		return nil, customerrors.ErrSessionIdInvalid
@@ -59,7 +60,7 @@ func (s *service) FinishRegister(ctx context.Context, req dto.FinishRegisterRequ
 		return nil, err
 	}
 
-	session, err := s.repo.GetSession(ctx, sessionUUID)
+	session, err := s.repo.GetRegisterSession(ctx, sessionUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,11 +108,64 @@ func (s *service) BeginLogin(ctx context.Context, username string) (*dto.BeginRe
 
 	sessionID, err := s.repo.SaveLoginSession(ctx, *webauthnUser, sessionData)
 	if err != nil {
-		return nil, customerrors.ErrInternalServer
+		return nil, err
 	}
 
 	return &dto.BeginResponse{
 		Options:   opts,
 		SessionID: sessionID.String(),
+	}, nil
+}
+
+func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.TokenResponse, error) {
+	sessionUUID, err := uuid.Parse(req.SessionID)
+	if err != nil {
+		return nil, customerrors.ErrSessionIdInvalid
+	}
+
+	user, err := s.repo.GetUserByUsername(ctx, req.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	creds, err := s.repo.GetCredentialsByUserID(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := s.repo.GetLoginSession(ctx, sessionUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	var sessionData webauthn.SessionData
+	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
+		return nil, customerrors.ErrInternalServer
+	}
+
+	webauthnUser := models.New(user, creds)
+	credential, err := webauthn.WebAuthn.FinishLogin(webauthnUser, sessionData, req.Credentials)
+	if err != nil {
+		return nil, customerrors.ErrInvalidCredentials
+	}
+
+	if err := s.repo.UpdateCredentials(ctx, credential); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.DeleteSession(ctx, sessionUUID); err != nil {
+		return nil, err
+	}
+
+	// ruolo non deve essere hardcoded
+	accessToken, refreshToken, err := s.jwt.GenerateJWT(req.Username, "user", user.ID)
+	if err != nil {
+		return nil, customerrors.ErrInternalServer
+	}
+
+	return &dto.TokenResponse{
+		Message:      "Login completed successfully!",
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}, nil
 }

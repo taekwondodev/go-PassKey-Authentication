@@ -6,7 +6,7 @@ type BeginRequest struct {
 	Username string `json:"username"`
 }
 
-type FinishRegisterRequest struct {
+type FinishRequest struct {
 	Username    string          `json:"username"`
 	SessionID   string          `json:"session_id"`
 	Credentials json.RawMessage `json:"credentials"`

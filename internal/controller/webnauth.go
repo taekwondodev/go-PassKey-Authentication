@@ -41,7 +41,7 @@ func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error
 }
 
 func (c *controller) FinishRegister(w http.ResponseWriter, r *http.Request) error {
-	var req dto.FinishRegisterRequest
+	var req dto.FinishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return customerrors.ErrBadRequest
 	}
@@ -69,9 +69,12 @@ func (c *controller) BeginLogin(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (c *controller) FinishLogin(w http.ResponseWriter, r *http.Request) error {
-	// Il frontend invia i dati di navigator.credentials.get()
-	// messaggio di conferma, token JWT
+	var req dto.FinishRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return customerrors.ErrBadRequest
+	}
 
+	// chiama service
 	return nil
 }
 

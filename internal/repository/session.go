@@ -42,10 +42,22 @@ func (r *repository) SaveLoginSession(ctx context.Context, u models.WebAuthnUser
 	return sessionID, err
 }
 
-func (r *repository) GetSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error) {
+func (r *repository) GetRegisterSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error) {
 	session, err := r.queries.GetWebAuthnSession(ctx, db.GetWebAuthnSessionParams{
 		ID:      sessionID,
 		Purpose: "registration",
+	})
+
+	if err != nil {
+		return db.WebauthnSession{}, customerrors.ErrSessionNotFound
+	}
+	return session, nil
+}
+
+func (r *repository) GetLoginSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error) {
+	session, err := r.queries.GetWebAuthnSession(ctx, db.GetWebAuthnSessionParams{
+		ID:      sessionID,
+		Purpose: "login",
 	})
 
 	if err != nil {

@@ -9,7 +9,8 @@ type MessageResponse struct {
 	Message string `json:"message"`
 }
 
-type RefreshTokenResponse struct {
-	Message     string `json:"message"`
-	AccessToken string `json:"access_token"`
+type TokenResponse struct {
+	Message      string `json:"message"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token,omitzero"`
 }

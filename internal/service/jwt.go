@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (s *service) Refresh(req dto.RefreshTokenRequest) (*dto.RefreshTokenResponse, error) {
+func (s *service) Refresh(req dto.RefreshTokenRequest) (*dto.TokenResponse, error) {
 	claims, err := s.jwt.ValidateJWT(req.RefreshToken)
 	if err != nil {
 		return nil, err
@@ -17,7 +17,7 @@ func (s *service) Refresh(req dto.RefreshTokenRequest) (*dto.RefreshTokenRespons
 		return nil, err
 	}
 
-	return &dto.RefreshTokenResponse{
+	return &dto.TokenResponse{
 		Message:     "Update token successfully!",
 		AccessToken: accessToken,
 	}, nil

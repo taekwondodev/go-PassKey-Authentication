@@ -34,3 +34,16 @@ func (r *repository) GetCredentialsByUserID(ctx context.Context, userID uuid.UUI
 
 	return credentials, nil
 }
+
+func (r *repository) UpdateCredentialSignCount(ctx context.Context, credential db.Credential) error {
+	err := r.queries.UpdateCredentialSignCount(ctx, db.UpdateCredentialSignCountParams{
+		ID:        credential.ID,
+		SignCount: credential.Authenticator.SignCount,
+	})
+
+	if err != nil {
+		return customerrors.ErrInternalServer
+	}
+
+	return nil
+}
