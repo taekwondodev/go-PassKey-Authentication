@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -22,11 +23,11 @@ VALUES (
 
 type CreateCredentialParams struct {
 	ID                string
-	UserID            int32
+	UserID            uuid.UUID
 	PublicKey         []byte
 	SignCount         int64
 	Transports        []string
-	Aaguid            pgtype.UUID
+	Aaguid            uuid.UUID
 	AttestationFormat pgtype.Text
 }
 
@@ -47,7 +48,7 @@ const getCredentialsByUserID = `-- name: GetCredentialsByUserID :many
 SELECT id, user_id, public_key, sign_count, transports, aaguid, attestation_format, created_at FROM credentials WHERE user_id = $1
 `
 
-func (q *Queries) GetCredentialsByUserID(ctx context.Context, userID int32) ([]Credential, error) {
+func (q *Queries) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]Credential, error) {
 	rows, err := q.db.Query(ctx, getCredentialsByUserID, userID)
 	if err != nil {
 		return nil, err
@@ -74,4 +75,18 @@ func (q *Queries) GetCredentialsByUserID(ctx context.Context, userID int32) ([]C
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateCredentialSignCount = `-- name: UpdateCredentialSignCount :exec
+UPDATE credentials SET sign_count = $2 WHERE id = $1
+`
+
+type UpdateCredentialSignCountParams struct {
+	ID        string
+	SignCount int64
+}
+
+func (q *Queries) UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error {
+	_, err := q.db.Exec(ctx, updateCredentialSignCount, arg.ID, arg.SignCount)
+	return err
 }

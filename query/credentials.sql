@@ -8,3 +8,6 @@ VALUES (
 
 -- name: GetCredentialsByUserID :many
 SELECT * FROM credentials WHERE user_id = $1;
+
+-- name: UpdateCredentialSignCount :exec
+UPDATE credentials SET sign_count = $2 WHERE id = $1;

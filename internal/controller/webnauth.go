@@ -74,8 +74,12 @@ func (c *controller) FinishLogin(w http.ResponseWriter, r *http.Request) error {
 		return customerrors.ErrBadRequest
 	}
 
-	// chiama service
-	return nil
+	res, err := c.authService.FinishLogin(r.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	return c.respond(w, http.StatusOK, res)
 }
 
 func (c *controller) respond(w http.ResponseWriter, status int, data any) error {

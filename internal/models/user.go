@@ -11,6 +11,7 @@ import (
 type User interface {
 	WebAuthnID() []byte
 	WebAuthnName() string
+	WebAuthnDisplayName() string
 	WebAuthnCredentials() []webauthn.Credential
 }
 
@@ -24,13 +25,16 @@ type WebAuthnUser struct {
 func New(u db.User, creds []db.Credential) *WebAuthnUser {
 	var webauthnCreds []webauthn.Credential
 	for _, c := range creds {
+		transports := newTransports(c)
+		attestationFormat := convertAttestationFormat(c)
+
 		webauthnCreds = append(webauthnCreds, webauthn.Credential{
 			ID:              []byte(c.ID),
 			PublicKey:       c.PublicKey,
-			AttestationType: c.AttestationFormat,
-			Transport:       protocol.AuthenticatorTransport(c.Transports),
+			AttestationType: attestationFormat,
+			Transport:       transports,
 			Authenticator: webauthn.Authenticator{
-				AAGUID:    [16]byte{}, // Puoi parsare c.AAGUID se necessario
+				AAGUID:    c.Aaguid[:],
 				SignCount: uint32(c.SignCount),
 			},
 		})
@@ -44,11 +48,31 @@ func New(u db.User, creds []db.Credential) *WebAuthnUser {
 	}
 }
 
-func (u *WebAuthnUser) WebAuthnID() uuid.UUID {
-	return u.ID
+func convertAttestationFormat(c db.Credential) string {
+	var attestationFormat string
+	if c.AttestationFormat.Valid {
+		attestationFormat = c.AttestationFormat.String
+	}
+	return attestationFormat
+}
+
+func newTransports(c db.Credential) []protocol.AuthenticatorTransport {
+	var transports []protocol.AuthenticatorTransport
+	for _, t := range c.Transports {
+		transports = append(transports, protocol.AuthenticatorTransport(t))
+	}
+	return transports
+}
+
+func (u *WebAuthnUser) WebAuthnID() []byte {
+	return u.ID[:]
 }
 
 func (u *WebAuthnUser) WebAuthnName() string {
+	return u.Username
+}
+
+func (u *WebAuthnUser) WebAuthnDisplayName() string {
 	return u.Username
 }
 

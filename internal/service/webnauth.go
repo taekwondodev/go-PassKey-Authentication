@@ -9,6 +9,7 @@ import (
 	"go-PassKey-Authentication/internal/repository"
 	"go-PassKey-Authentication/pkg"
 
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 )
@@ -33,6 +34,9 @@ func New(repo repository.UserRepository, jwt pkg.Token, webauthn *webauthn.WebAu
 
 func (s *service) BeginRegister(ctx context.Context, username string) (*dto.BeginResponse, error) {
 	user, err := s.repo.SaveUser(ctx, username)
+	if err != nil {
+		return nil, err
+	}
 	webauthnUser := models.New(user, nil)
 	opts, sessionData, err := s.webauthn.BeginRegistration(webauthnUser)
 	if err != nil {
@@ -71,13 +75,18 @@ func (s *service) FinishRegister(ctx context.Context, req dto.FinishRequest) (*d
 		return nil, customerrors.ErrInternalServer
 	}
 
-	webauthnUser := models.New(user, nil)
-	credential, err := s.webauthn.FinishRegistration(webauthnUser, sessionData, req.Credentials)
+	parsedResponse, err := protocol.ParseCredentialCreationResponseBody(req.Credentials)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
 
-	if err := s.repo.SaveCredential(ctx, user.ID, credential); err != nil {
+	webauthnUser := models.New(user, nil)
+	credential, err := s.webauthn.FinishRegistration(webauthnUser, sessionData, parsedResponse)
+	if err != nil {
+		return nil, customerrors.ErrInvalidCredentials
+	}
+
+	if err := s.repo.SaveCredentials(ctx, user.ID, credential); err != nil {
 		return nil, err
 	}
 
@@ -144,8 +153,13 @@ func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.
 		return nil, customerrors.ErrInternalServer
 	}
 
+	parsedResponse, err := protocol.ParseCredentialRequestResponseBody(req.Credentials)
+	if err != nil {
+		return nil, customerrors.ErrInvalidCredentials
+	}
+
 	webauthnUser := models.New(user, creds)
-	credential, err := s.webauthn.FinishLogin(webauthnUser, sessionData, req.Credentials)
+	credential, err := s.webauthn.FinishLogin(webauthnUser, sessionData, parsedResponse)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
@@ -158,8 +172,7 @@ func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.
 		return nil, err
 	}
 
-	// ruolo non deve essere hardcoded
-	accessToken, refreshToken, err := s.jwt.GenerateJWT(req.Username, "user", user.ID)
+	accessToken, refreshToken, err := s.jwt.GenerateJWT(req.Username, user.Role, user.ID)
 	if err != nil {
 		return nil, customerrors.ErrInternalServer
 	}

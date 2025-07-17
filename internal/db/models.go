@@ -11,11 +11,11 @@ import (
 
 type Credential struct {
 	ID                string
-	UserID            int32
+	UserID            uuid.UUID
 	PublicKey         []byte
 	SignCount         int64
 	Transports        []string
-	Aaguid            pgtype.UUID
+	Aaguid            uuid.UUID
 	AttestationFormat pgtype.Text
 	CreatedAt         pgtype.Timestamp
 }
@@ -31,7 +31,7 @@ type User struct {
 
 type WebauthnSession struct {
 	ID        uuid.UUID
-	UserID    int32
+	UserID    uuid.UUID
 	Data      []byte
 	Purpose   string
 	CreatedAt pgtype.Timestamp

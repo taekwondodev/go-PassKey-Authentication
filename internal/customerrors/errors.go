@@ -22,6 +22,7 @@ var (
 	ErrSessionNotFound       = &Error{Code: 404, Message: "session not found"}
 	ErrUserNotFound          = &Error{Code: 404, Message: "user not found"}
 	ErrBadRequest            = &Error{Code: 400, Message: "bad request"}
+	ErrInvalidAAGUID         = &Error{Code: 400, Message: "invalid aaguid"}
 	ErrInternalServer        = &Error{Code: 500, Message: "internal server error"}
 )
 

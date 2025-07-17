@@ -6,6 +6,7 @@ import (
 	"go-PassKey-Authentication/internal/db"
 	"go-PassKey-Authentication/internal/models"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 )
 
@@ -17,9 +18,9 @@ type UserRepository interface {
 	GetRegisterSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error)
 	GetLoginSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error)
 	DeleteSession(ctx context.Context, sessionID uuid.UUID) error
-	SaveCredentials(ctx context.Context, userID uuid.UUID, credentials db.Credential) error
+	SaveCredentials(ctx context.Context, userID uuid.UUID, credentials *webauthn.Credential) error
 	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]db.Credential, error)
-	UpdateCredentials(ctx context.Context, credential db.Credential) error
+	UpdateCredentials(ctx context.Context, credential *webauthn.Credential) error
 }
 
 type repository struct {
