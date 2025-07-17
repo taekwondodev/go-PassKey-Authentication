@@ -11,7 +11,7 @@ import (
 )
 
 type UserRepository interface {
-	SaveUser(ctx context.Context, username string) (db.User, error)
+	SaveUser(ctx context.Context, username, role string) (db.User, error)
 	GetUserByUsername(ctx context.Context, username string) (db.User, error)
 	SaveRegisterSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
 	SaveLoginSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
@@ -31,10 +31,17 @@ func New(queries *db.Queries) UserRepository {
 	return &repository{queries: queries}
 }
 
-func (r *repository) SaveUser(ctx context.Context, username string) (db.User, error) {
+func (r *repository) SaveUser(ctx context.Context, username, role string) (db.User, error) {
 	user, err := r.queries.GetUserByUsername(ctx, username)
 	if err != nil {
-		user, err = r.queries.CreateUser(ctx, username)
+		if role != "" {
+			user, err = r.queries.CreateUserWithRole(ctx, db.CreateUserWithRoleParams{
+				Username: username,
+				Role:     role,
+			})
+		} else {
+			user, err = r.queries.CreateUser(ctx, username)
+		}
 		if err != nil {
 			return db.User{}, customerrors.ErrInternalServer
 		}

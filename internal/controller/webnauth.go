@@ -32,7 +32,7 @@ func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error
 		return customerrors.ErrBadRequest
 	}
 
-	res, err := c.authService.BeginRegister(r.Context(), req.Username)
+	res, err := c.authService.BeginRegister(r.Context(), req.Username, req.Role)
 	if err != nil {
 		return err
 	}

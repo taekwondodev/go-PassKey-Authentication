@@ -15,7 +15,7 @@ import (
 )
 
 type AuthService interface {
-	BeginRegister(ctx context.Context, username string) (*dto.BeginResponse, error)
+	BeginRegister(ctx context.Context, username, role string) (*dto.BeginResponse, error)
 	FinishRegister(ctx context.Context, req dto.FinishRequest) (*dto.MessageResponse, error)
 	BeginLogin(ctx context.Context, username string) (*dto.BeginResponse, error)
 	FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.TokenResponse, error)
@@ -32,8 +32,8 @@ func New(repo repository.UserRepository, jwt pkg.Token, webauthn *webauthn.WebAu
 	return &service{repo: repo, jwt: jwt, webauthn: webauthn}
 }
 
-func (s *service) BeginRegister(ctx context.Context, username string) (*dto.BeginResponse, error) {
-	user, err := s.repo.SaveUser(ctx, username)
+func (s *service) BeginRegister(ctx context.Context, username, role string) (*dto.BeginResponse, error) {
+	user, err := s.repo.SaveUser(ctx, username, role)
 	if err != nil {
 		return nil, err
 	}
