@@ -14,8 +14,7 @@ func Connect() (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("DATABASE_URL not defined")
 	}
 
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		return nil, err
 	}

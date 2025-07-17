@@ -21,7 +21,6 @@ var (
 	ErrInvalidCredentials    = &Error{Code: 401, Message: "invalid credentials"}
 	ErrSessionNotFound       = &Error{Code: 404, Message: "session not found"}
 	ErrUserNotFound          = &Error{Code: 404, Message: "user not found"}
-	ErrHttpMethodNotAllowed  = &Error{Code: 405, Message: "http method not allowed"}
 	ErrBadRequest            = &Error{Code: 400, Message: "bad request"}
 	ErrInternalServer        = &Error{Code: 500, Message: "internal server error"}
 )

@@ -22,18 +22,19 @@ type AuthService interface {
 }
 
 type service struct {
-	repo repository.UserRepository
-	jwt  pkg.Token
+	repo     repository.UserRepository
+	jwt      pkg.Token
+	webauthn *webauthn.WebAuthn
 }
 
-func New(repo repository.UserRepository, jwt pkg.Token) AuthService {
-	return &service{repo: repo, jwt: jwt}
+func New(repo repository.UserRepository, jwt pkg.Token, webauthn *webauthn.WebAuthn) AuthService {
+	return &service{repo: repo, jwt: jwt, webauthn: webauthn}
 }
 
 func (s *service) BeginRegister(ctx context.Context, username string) (*dto.BeginResponse, error) {
 	user, err := s.repo.SaveUser(ctx, username)
 	webauthnUser := models.New(user, nil)
-	opts, sessionData, err := webauthn.WebAuthn.BeginRegistration(webauthnUser)
+	opts, sessionData, err := s.webauthn.BeginRegistration(webauthnUser)
 	if err != nil {
 		return nil, customerrors.ErrInternalServer
 	}
@@ -71,7 +72,7 @@ func (s *service) FinishRegister(ctx context.Context, req dto.FinishRequest) (*d
 	}
 
 	webauthnUser := models.New(user, nil)
-	credential, err := webauthn.WebAuthn.FinishRegistration(webauthnUser, sessionData, req.Credentials)
+	credential, err := s.webauthn.FinishRegistration(webauthnUser, sessionData, req.Credentials)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
@@ -101,7 +102,7 @@ func (s *service) BeginLogin(ctx context.Context, username string) (*dto.BeginRe
 	}
 
 	webauthnUser := models.New(user, creds)
-	opts, sessionData, err := webauthn.WebAuthn.BeginLogin(webauthnUser)
+	opts, sessionData, err := s.webauthn.BeginLogin(webauthnUser)
 	if err != nil {
 		return nil, customerrors.ErrInternalServer
 	}
@@ -144,7 +145,7 @@ func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.
 	}
 
 	webauthnUser := models.New(user, creds)
-	credential, err := webauthn.WebAuthn.FinishLogin(webauthnUser, sessionData, req.Credentials)
+	credential, err := s.webauthn.FinishLogin(webauthnUser, sessionData, req.Credentials)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
