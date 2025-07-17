@@ -75,13 +75,13 @@ func (s *service) FinishRegister(ctx context.Context, req dto.FinishRequest) (*d
 		return nil, customerrors.ErrInternalServer
 	}
 
-	parsedResponse, err := protocol.ParseCredentialCreationResponseBody(req.Credentials)
+	parsedResponse, err := protocol.ParseCredentialCreationResponseBytes(req.Credentials)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
 
 	webauthnUser := models.New(user, nil)
-	credential, err := s.webauthn.FinishRegistration(webauthnUser, sessionData, parsedResponse)
+	credential, err := s.webauthn.CreateCredential(webauthnUser, sessionData, parsedResponse)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
@@ -153,13 +153,13 @@ func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.
 		return nil, customerrors.ErrInternalServer
 	}
 
-	parsedResponse, err := protocol.ParseCredentialRequestResponseBody(req.Credentials)
+	parsedResponse, err := protocol.ParseCredentialRequestResponseBytes(req.Credentials)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
 
 	webauthnUser := models.New(user, creds)
-	credential, err := s.webauthn.FinishLogin(webauthnUser, sessionData, parsedResponse)
+	credential, err := s.webauthn.ValidateLogin(webauthnUser, sessionData, parsedResponse)
 	if err != nil {
 		return nil, customerrors.ErrInvalidCredentials
 	}
