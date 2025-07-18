@@ -17,9 +17,9 @@ import (
 
 type AuthService interface {
 	BeginRegister(ctx context.Context, username, role string) (*dto.BeginResponse, error)
-	FinishRegister(ctx context.Context, req dto.FinishRequest) (*dto.MessageResponse, error)
+	FinishRegister(ctx context.Context, req *dto.FinishRequest) (*dto.MessageResponse, error)
 	BeginLogin(ctx context.Context, username string) (*dto.BeginResponse, error)
-	FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.TokenResponse, error)
+	FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, error)
 	Refresh(req dto.RefreshTokenRequest) (*dto.TokenResponse, error)
 }
 
@@ -55,7 +55,7 @@ func (s *service) BeginRegister(ctx context.Context, username, role string) (*dt
 	}, nil
 }
 
-func (s *service) FinishRegister(ctx context.Context, req dto.FinishRequest) (*dto.MessageResponse, error) {
+func (s *service) FinishRegister(ctx context.Context, req *dto.FinishRequest) (*dto.MessageResponse, error) {
 	sessionUUID, user, err := s.getUser(ctx, req)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (s *service) BeginLogin(ctx context.Context, username string) (*dto.BeginRe
 	}, nil
 }
 
-func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.TokenResponse, error) {
+func (s *service) FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, error) {
 	sessionUUID, user, err := s.getUser(ctx, req)
 	if err != nil {
 		return nil, err
@@ -175,7 +175,7 @@ func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.
 	}, nil
 }
 
-func (s *service) getUser(ctx context.Context, req dto.FinishRequest) (uuid.UUID, db.User, error) {
+func (s *service) getUser(ctx context.Context, req *dto.FinishRequest) (uuid.UUID, db.User, error) {
 	sessionUUID, err := uuid.Parse(req.SessionID)
 	if err != nil {
 		return uuid.Nil, db.User{}, customerrors.ErrSessionIdInvalid

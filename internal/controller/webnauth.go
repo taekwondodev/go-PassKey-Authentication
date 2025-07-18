@@ -24,12 +24,29 @@ func New(authService service.AuthService) AuthController {
 	return &controller{authService: authService}
 }
 
+type Validator interface {
+	Validate() error
+}
+
 // da cambiaro con encoding/jsonv2
 
-func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error {
-	var req dto.BeginRequest
+func decodeAndValidate[T Validator](r *http.Request) (T, error) {
+	var req T
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return customerrors.ErrBadRequest
+		return req, customerrors.ErrBadRequest
+	}
+
+	if err := req.Validate(); err != nil {
+		return req, err
+	}
+
+	return req, nil
+}
+
+func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error {
+	req, err := decodeAndValidate[*dto.BeginRequest](r)
+	if err != nil {
+		return err
 	}
 
 	res, err := c.authService.BeginRegister(r.Context(), req.Username, req.Role)
@@ -41,9 +58,9 @@ func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error
 }
 
 func (c *controller) FinishRegister(w http.ResponseWriter, r *http.Request) error {
-	var req dto.FinishRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return customerrors.ErrBadRequest
+	req, err := decodeAndValidate[*dto.FinishRequest](r)
+	if err != nil {
+		return err
 	}
 
 	res, err := c.authService.FinishRegister(r.Context(), req)
@@ -55,9 +72,9 @@ func (c *controller) FinishRegister(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (c *controller) BeginLogin(w http.ResponseWriter, r *http.Request) error {
-	var req dto.BeginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return customerrors.ErrBadRequest
+	req, err := decodeAndValidate[*dto.BeginRequest](r)
+	if err != nil {
+		return err
 	}
 
 	res, err := c.authService.BeginLogin(r.Context(), req.Username)
@@ -69,9 +86,9 @@ func (c *controller) BeginLogin(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (c *controller) FinishLogin(w http.ResponseWriter, r *http.Request) error {
-	var req dto.FinishRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return customerrors.ErrBadRequest
+	req, err := decodeAndValidate[*dto.FinishRequest](r)
+	if err != nil {
+		return err
 	}
 
 	res, err := c.authService.FinishLogin(r.Context(), req)

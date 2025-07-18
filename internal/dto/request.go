@@ -1,10 +1,18 @@
 package dto
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"go-PassKey-Authentication/internal/customerrors"
+	"strings"
+)
 
 type BeginRequest struct {
 	Username string `json:"username"`
 	Role     string `json:"role,omitzero"`
+}
+
+func (r BeginRequest) Validate() error {
+	return checkUsername(r.Username)
 }
 
 type FinishRequest struct {
@@ -13,6 +21,42 @@ type FinishRequest struct {
 	Credentials json.RawMessage `json:"credentials"`
 }
 
+func (r FinishRequest) Validate() error {
+	if err := checkUsername(r.Username); err != nil {
+		return err
+	}
+
+	if strings.TrimSpace(r.SessionID) == "" {
+		return customerrors.ErrSessionIdInvalid
+	}
+
+	if len(r.Credentials) == 0 {
+		return customerrors.ErrInvalidCredentials
+	}
+	if !json.Valid(r.Credentials) {
+		return customerrors.ErrInvalidCredentials
+	}
+
+	return nil
+}
+
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
+}
+
+func (r RefreshTokenRequest) Validate() error {
+	if strings.TrimSpace(r.RefreshToken) == "" {
+		return customerrors.ErrBadRequest
+	}
+	return nil
+}
+
+func checkUsername(username string) error {
+	if strings.TrimSpace(username) == "" {
+		return customerrors.ErrInvalidUsername
+	}
+	if len(username) < 3 {
+		return customerrors.ErrInvalidUsername
+	}
+	return nil
 }
