@@ -49,7 +49,7 @@ func (r *repository) SaveUser(ctx context.Context, username, role string) (db.Us
 		return user, nil
 	}
 
-	return db.User{}, customerrors.ErrUsernameAlreadyExists
+	return user, customerrors.ErrUsernameAlreadyExists
 }
 
 func (r *repository) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
