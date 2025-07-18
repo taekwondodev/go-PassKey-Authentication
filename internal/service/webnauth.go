@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"go-PassKey-Authentication/internal/customerrors"
+	"go-PassKey-Authentication/internal/db"
 	"go-PassKey-Authentication/internal/dto"
 	"go-PassKey-Authentication/internal/models"
 	"go-PassKey-Authentication/internal/repository"
@@ -55,12 +56,7 @@ func (s *service) BeginRegister(ctx context.Context, username, role string) (*dt
 }
 
 func (s *service) FinishRegister(ctx context.Context, req dto.FinishRequest) (*dto.MessageResponse, error) {
-	sessionUUID, err := uuid.Parse(req.SessionID)
-	if err != nil {
-		return nil, customerrors.ErrSessionIdInvalid
-	}
-
-	user, err := s.repo.GetUserByUsername(ctx, req.Username)
+	sessionUUID, user, err := s.getUser(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -128,12 +124,7 @@ func (s *service) BeginLogin(ctx context.Context, username string) (*dto.BeginRe
 }
 
 func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.TokenResponse, error) {
-	sessionUUID, err := uuid.Parse(req.SessionID)
-	if err != nil {
-		return nil, customerrors.ErrSessionIdInvalid
-	}
-
-	user, err := s.repo.GetUserByUsername(ctx, req.Username)
+	sessionUUID, user, err := s.getUser(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -182,4 +173,17 @@ func (s *service) FinishLogin(ctx context.Context, req dto.FinishRequest) (*dto.
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func (s *service) getUser(ctx context.Context, req dto.FinishRequest) (uuid.UUID, db.User, error) {
+	sessionUUID, err := uuid.Parse(req.SessionID)
+	if err != nil {
+		return uuid.Nil, db.User{}, customerrors.ErrSessionIdInvalid
+	}
+
+	user, err := s.repo.GetUserByUsername(ctx, req.Username)
+	if err != nil {
+		return uuid.Nil, db.User{}, err
+	}
+	return sessionUUID, user, nil
 }

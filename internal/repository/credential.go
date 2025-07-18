@@ -11,20 +11,9 @@ import (
 )
 
 func (r *repository) SaveCredentials(ctx context.Context, userID uuid.UUID, credential *webauthn.Credential) error {
-	var transports []string
-	for _, t := range credential.Transport {
-		transports = append(transports, string(t))
-	}
-
-	aaguid, err := uuid.FromBytes(credential.Authenticator.AAGUID)
+	transports, aaguid, attestationFormat, err := r.convertToDbCredential(credential)
 	if err != nil {
 		return customerrors.ErrInvalidAAGUID
-	}
-
-	var attestationFormat pgtype.Text
-	if credential.AttestationType != "" {
-		attestationFormat.String = credential.AttestationType
-		attestationFormat.Valid = true
 	}
 
 	err = r.queries.CreateCredential(ctx, db.CreateCredentialParams{
@@ -64,4 +53,21 @@ func (r *repository) UpdateCredentials(ctx context.Context, credential *webauthn
 	}
 
 	return nil
+}
+
+func (r *repository) convertToDbCredential(credential *webauthn.Credential) ([]string, uuid.UUID, pgtype.Text, error) {
+	var transports []string
+	for _, t := range credential.Transport {
+		transports = append(transports, string(t))
+	}
+
+	aaguid, err := uuid.FromBytes(credential.Authenticator.AAGUID)
+
+	var attestationFormat pgtype.Text
+	if credential.AttestationType != "" {
+		attestationFormat.String = credential.AttestationType
+		attestationFormat.Valid = true
+	}
+
+	return transports, aaguid, attestationFormat, err
 }
