@@ -3,13 +3,12 @@
 # go-PassKey-Authentication
 
 ![Go Version](https://img.shields.io/badge/Go-1.24.5-blue.svg)
-![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Flyway](https://img.shields.io/badge/Flyway-CC0200?logo=flyway&logoColor=white)](https://flywaydb.org/)
-![PostgreSQL](https://img.shields.io/badge/postgresql-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
 [![SonarCloud](https://img.shields.io/badge/SonarCloud-F3702A?logo=sonarcloud&logoColor=white)](https://sonarcloud.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Report Card](https://goreportcard.com/badge/github.com/taekwondodev/go-Passkey-Authentication)](https://goreportcard.com/report/github.com/taekwondodev/go-PassKey-Authentication)
+[![Go Report Card](https://goreportcard.com/badge/github.com/taekwondodev/go-PassKey-Authentication)](https://goreportcard.com/report/github.com/taekwondodev/go-PassKey-Authentication)
 
 Modern passwordless authentication using WebAuthn and Go for web clients
 
