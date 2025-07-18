@@ -1,7 +1,7 @@
 package service
 
 import (
-	"go-PassKey-Authentication/internal/dto"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/dto"
 
 	"github.com/google/uuid"
 )

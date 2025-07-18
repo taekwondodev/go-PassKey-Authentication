@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"fmt"
-	"go-PassKey-Authentication/internal/customerrors"
 	"net/http"
 	"time"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
 )
 
 func LoggingMiddleware(next HandlerFunc) HandlerFunc {

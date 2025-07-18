@@ -2,12 +2,12 @@ package repository
 
 import (
 	"context"
-	"go-PassKey-Authentication/internal/customerrors"
-	"go-PassKey-Authentication/internal/db"
-	"go-PassKey-Authentication/internal/models"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/models"
 )
 
 type UserRepository interface {

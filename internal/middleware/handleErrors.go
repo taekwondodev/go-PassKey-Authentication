@@ -2,8 +2,9 @@ package middleware
 
 import (
 	"encoding/json"
-	"go-PassKey-Authentication/internal/customerrors"
 	"net/http"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
 )
 
 // con go 1.25 sostituire encoding/json

@@ -1,11 +1,10 @@
 package models
 
 import (
-	"go-PassKey-Authentication/internal/db"
-
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
 )
 
 type User interface {

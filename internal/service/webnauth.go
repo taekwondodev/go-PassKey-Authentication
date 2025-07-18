@@ -3,16 +3,16 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"go-PassKey-Authentication/internal/customerrors"
-	"go-PassKey-Authentication/internal/db"
-	"go-PassKey-Authentication/internal/dto"
-	"go-PassKey-Authentication/internal/models"
-	"go-PassKey-Authentication/internal/repository"
-	"go-PassKey-Authentication/pkg"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/dto"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/models"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/repository"
+	"github.com/taekwondodev/go-PassKey-Authentication/pkg"
 )
 
 type AuthService interface {

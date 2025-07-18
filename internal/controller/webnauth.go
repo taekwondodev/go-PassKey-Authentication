@@ -2,10 +2,11 @@ package controller
 
 import (
 	"encoding/json"
-	"go-PassKey-Authentication/internal/customerrors"
-	"go-PassKey-Authentication/internal/dto"
-	"go-PassKey-Authentication/internal/service"
 	"net/http"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/dto"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/service"
 )
 
 type AuthController interface {

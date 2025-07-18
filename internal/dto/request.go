@@ -2,8 +2,9 @@ package dto
 
 import (
 	"encoding/json"
-	"go-PassKey-Authentication/internal/customerrors"
 	"strings"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
 )
 
 type BeginRequest struct {

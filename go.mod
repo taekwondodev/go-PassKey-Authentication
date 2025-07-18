@@ -1,14 +1,11 @@
-module go-PassKey-Authentication
+module github.com/taekwondodev/go-PassKey-Authentication
 
 go 1.24.5
 
 require (
+	github.com/go-webauthn/webauthn v0.13.3
 	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/google/uuid v1.6.0
-)
-
-require (
-	github.com/go-webauthn/webauthn v0.13.3
 	github.com/jackc/pgx/v5 v5.7.5
 )
 

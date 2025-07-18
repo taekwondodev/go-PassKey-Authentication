@@ -3,13 +3,14 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"go-PassKey-Authentication/internal/customerrors"
-	"go-PassKey-Authentication/internal/db"
-	"go-PassKey-Authentication/internal/models"
 	"time"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
 )
 
 func (r *repository) SaveRegisterSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error) {

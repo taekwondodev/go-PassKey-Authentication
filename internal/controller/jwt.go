@@ -2,9 +2,12 @@ package controller
 
 import (
 	"encoding/json"
-	"go-PassKey-Authentication/internal/customerrors"
-	"go-PassKey-Authentication/internal/dto"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
+
 	"net/http"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/dto"
 )
 
 func (c *controller) Refresh(w http.ResponseWriter, r *http.Request) error {

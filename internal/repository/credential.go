@@ -2,12 +2,12 @@ package repository
 
 import (
 	"context"
-	"go-PassKey-Authentication/internal/customerrors"
-	"go-PassKey-Authentication/internal/db"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
 )
 
 func (r *repository) SaveCredentials(ctx context.Context, userID uuid.UUID, credential *webauthn.Credential) error {

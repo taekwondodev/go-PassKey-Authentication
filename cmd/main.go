@@ -1,13 +1,13 @@
 package main
 
 import (
-	"go-PassKey-Authentication/internal/api"
-	"go-PassKey-Authentication/internal/config"
-	"go-PassKey-Authentication/internal/controller"
-	"go-PassKey-Authentication/internal/db"
-	"go-PassKey-Authentication/internal/repository"
-	"go-PassKey-Authentication/internal/service"
-	"go-PassKey-Authentication/pkg"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/api"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/config"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/controller"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/repository"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/service"
+	"github.com/taekwondodev/go-PassKey-Authentication/pkg"
 )
 
 func main() {

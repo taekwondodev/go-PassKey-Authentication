@@ -1,9 +1,10 @@
 package api
 
 import (
-	"go-PassKey-Authentication/internal/controller"
-	"go-PassKey-Authentication/internal/middleware"
 	"net/http"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/controller"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/middleware"
 )
 
 var router *http.ServeMux
