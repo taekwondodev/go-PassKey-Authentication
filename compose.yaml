@@ -18,7 +18,7 @@ services:
         condition: service_healthy
 
   flyway:
-    image: flyway/flyway:latest
+    image: flyway/flyway:latest-alpine
     container_name: flyway_passkey
     networks:
       - private_network
@@ -26,7 +26,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      FLYWAY_URL: ${POSTGRES_URL}
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       FLYWAY_USER: ${POSTGRES_USER}
       FLYWAY_PASSWORD: ${POSTGRES_PASSWORD}
       FLYWAY_CONNECT_RETRIES: 30
