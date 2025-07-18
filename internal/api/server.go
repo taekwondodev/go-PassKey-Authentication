@@ -47,10 +47,10 @@ func (s *Server) StartWithGracefulShutdown() {
 		defer cancel()
 
 		if err := s.shutdown(ctx); err != nil {
-			fmt.Printf("Could not gracefully shutdown the server: %v", err)
+			fmt.Println("Could not gracefully shutdown the server:", err)
 
 			if err := s.Close(); err != nil {
-				fmt.Printf("Could not close server: %v", err)
+				fmt.Println("Could not close server:", err)
 			}
 		}
 		fmt.Println("Server gracefully stopped")
@@ -58,7 +58,7 @@ func (s *Server) StartWithGracefulShutdown() {
 }
 
 func (s *Server) start() error {
-	fmt.Printf("Server listening on %s", s.Addr)
+	fmt.Println("Server listening on", s.Addr)
 	return s.ListenAndServe()
 }
 

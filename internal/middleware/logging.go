@@ -10,7 +10,7 @@ import (
 func LoggingMiddleware(next HandlerFunc) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		start := time.Now()
-		fmt.Printf("Started %s %s", r.Method, r.URL.Path)
+		fmt.Printf("Started %s %s\n", r.Method, r.URL.Path)
 
 		err := next(w, r)
 
@@ -20,7 +20,7 @@ func LoggingMiddleware(next HandlerFunc) HandlerFunc {
 			status = customerrors.GetStatus(err)
 		}
 
-		fmt.Printf("Completed %s %s | Status: %d | Duration: %v",
+		fmt.Printf("Completed %s %s | Status: %d | Duration: %v\n",
 			r.Method, r.URL.Path, status, duration)
 
 		return err
