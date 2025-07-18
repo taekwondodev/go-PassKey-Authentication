@@ -10,6 +10,7 @@ var router *http.ServeMux
 
 func SetupRoutes(authController controller.AuthController) *http.ServeMux {
 	router = http.NewServeMux()
+	setupPreflightRoute()
 	setupRegisterRoutes(authController)
 	setupLoginRoutes(authController)
 	setupTokenRoutes(authController)
@@ -17,9 +18,17 @@ func SetupRoutes(authController controller.AuthController) *http.ServeMux {
 }
 
 func applyMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
-	return middleware.ErrorHandler(
-		middleware.LoggingMiddleware(h),
+	return middleware.CorsMiddleware(
+		middleware.ErrorHandler(
+			middleware.LoggingMiddleware(h),
+		),
 	)
+}
+
+func setupPreflightRoute() {
+	router.Handle("OPTIONS /", middleware.CorsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})))
 }
 
 func setupRegisterRoutes(authController controller.AuthController) {

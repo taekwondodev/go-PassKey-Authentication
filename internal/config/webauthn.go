@@ -1,9 +1,19 @@
 package config
 
-import "github.com/go-webauthn/webauthn/webauthn"
+import (
+	"fmt"
+	"os"
+
+	"github.com/go-webauthn/webauthn/webauthn"
+)
 
 func InitWebAuthn() (*webauthn.WebAuthn, error) {
-	origins := [1]string{"http://localhost:8080"}
+	origin := os.Getenv("ORIGIN")
+	if origin == "" {
+		return nil, fmt.Errorf("ORIGIN not defined")
+	}
+
+	origins := [1]string{origin}
 
 	return webauthn.New(&webauthn.Config{
 		RPDisplayName: "go-PassKey-Authentication",
