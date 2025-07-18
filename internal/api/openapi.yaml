@@ -1,0 +1,527 @@
+openapi: 3.1.0
+info:
+  title: go-PassKey-Authentication API
+  description: |
+    A modern passwordless authentication system using WebAuthn/FIDO2 and JWT tokens.
+
+    ## Authentication Flow
+
+    ### Registration
+    1. Call `POST /register/begin` with username and optional role
+    2. Use the returned options to create credentials on the client
+    3. Call `POST /register/finish` with the created credentials
+
+    ### Login
+    1. Call `POST /login/begin` with username
+    2. Use the returned options to authenticate with existing credentials
+    3. Call `POST /login/finish` with the authentication result
+    4. Receive JWT access and refresh tokens
+
+    ### Token Refresh
+    - Use `POST /refresh` with a valid refresh token to get a new access token
+
+    ## Security
+    - All endpoints support CORS for frontend integration
+    - WebAuthn provides FIDO2-compliant passwordless authentication
+    - JWT tokens are used for API authentication after login
+  version: 1.0.0
+  contact:
+    name: Davide Galdiero
+    url: https://github.com/taekwondodev/go-PassKey-Authentication
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: WebAuthn registration and login operations
+  - name: Token Management
+    description: JWT token operations
+  - name: Health
+    description: Health check and CORS preflight
+
+paths:
+  /register/begin:
+    post:
+      tags:
+        - Authentication
+      summary: Begin WebAuthn registration
+      description: |
+        Initiates the WebAuthn registration process for a new user.
+        Returns challenge options that must be used by the client to create credentials.
+      operationId: beginRegister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BeginRequest"
+            examples:
+              user_registration:
+                summary: Regular user registration
+                value:
+                  username: "john_doe"
+              admin_registration:
+                summary: Admin user registration
+                value:
+                  username: "admin_user"
+                  role: "admin"
+      responses:
+        "202":
+          description: Registration challenge created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeginResponse"
+              examples:
+                success:
+                  summary: Successful response
+                  value:
+                    options:
+                      challenge: "Y2hhbGxlbmdlZGF0YQ"
+                      rp:
+                        name: "go-PassKey-Authentication"
+                        id: "localhost"
+                      user:
+                        id: "dXNlcmlk"
+                        name: "john_doe"
+                        displayName: "john_doe"
+                      pubKeyCredParams:
+                        - alg: -7
+                          type: "public-key"
+                      timeout: 60000
+                      attestation: "none"
+                    session_id: "123e4567-e89b-12d3-a456-426614174000"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/UsernameExists"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /register/finish:
+    post:
+      tags:
+        - Authentication
+      summary: Complete WebAuthn registration
+      description: |
+        Completes the WebAuthn registration process by validating the credentials
+        created by the client and storing them in the database.
+      operationId: finishRegister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishRequest"
+            examples:
+              complete_registration:
+                summary: Complete registration
+                value:
+                  username: "john_doe"
+                  session_id: "123e4567-e89b-12d3-a456-426614174000"
+                  credentials:
+                    id: "Y3JlZGVudGlhbGlk"
+                    rawId: "Y3JlZGVudGlhbGlk"
+                    response:
+                      attestationObject: "bytestring"
+                      clientDataJSON: "bytestring"
+                    type: "public-key"
+      responses:
+        "201":
+          description: Registration completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                success:
+                  summary: Registration successful
+                  value:
+                    message: "Registration completed successfully!"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+        "404":
+          $ref: "#/components/responses/SessionNotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /login/begin:
+    post:
+      tags:
+        - Authentication
+      summary: Begin WebAuthn login
+      description: |
+        Initiates the WebAuthn login process for an existing user.
+        Returns challenge options that must be used by the client to authenticate.
+      operationId: beginLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBeginRequest"
+            examples:
+              user_login:
+                summary: User login attempt
+                value:
+                  username: "john_doe"
+      responses:
+        "202":
+          description: Login challenge created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeginResponse"
+              examples:
+                success:
+                  summary: Successful response
+                  value:
+                    options:
+                      challenge: "bG9naW5jaGFsbGVuZ2U"
+                      timeout: 60000
+                      rpId: "localhost"
+                      allowCredentials:
+                        - id: "Y3JlZGVudGlhbGlk"
+                          type: "public-key"
+                          transports: ["usb", "nfc"]
+                    session_id: "123e4567-e89b-12d3-a456-426614174001"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/UserNotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /login/finish:
+    post:
+      tags:
+        - Authentication
+      summary: Complete WebAuthn login
+      description: |
+        Completes the WebAuthn login process by validating the authentication
+        response and returning JWT tokens for API access.
+      operationId: finishLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishRequest"
+            examples:
+              complete_login:
+                summary: Complete login
+                value:
+                  username: "john_doe"
+                  session_id: "123e4567-e89b-12d3-a456-426614174001"
+                  credentials:
+                    id: "Y3JlZGVudGlhbGlk"
+                    rawId: "Y3JlZGVudGlhbGlk"
+                    response:
+                      authenticatorData: "bytestring"
+                      clientDataJSON: "bytestring"
+                      signature: "bytestring"
+                    type: "public-key"
+      responses:
+        "200":
+          description: Login completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+              examples:
+                success:
+                  summary: Login successful
+                  value:
+                    message: "Login completed successfully!"
+                    access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+        "404":
+          $ref: "#/components/responses/SessionNotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /refresh:
+    post:
+      tags:
+        - Token Management
+      summary: Refresh access token
+      description: |
+        Generates a new access token using a valid refresh token.
+        The refresh token must be valid and not expired.
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+            examples:
+              token_refresh:
+                summary: Token refresh
+                value:
+                  refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        "200":
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshTokenResponse"
+              examples:
+                success:
+                  summary: Token refreshed
+                  value:
+                    message: "Update token successfully!"
+                    access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/InvalidToken"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /:
+    options:
+      tags:
+        - Health
+      summary: CORS preflight
+      description: Handles CORS preflight requests for all endpoints
+      operationId: corsPrefilght
+      responses:
+        "204":
+          description: CORS preflight successful
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                example: "http://localhost:3000"
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+                example: "GET, POST, OPTIONS"
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+                example: "Content-Type"
+
+components:
+  schemas:
+    BeginRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          minLength: 3
+          description: Username for the account (minimum 3 characters)
+          example: "john_doe"
+        role:
+          type: string
+          description: Optional role for the user (defaults to 'user')
+          example: "admin"
+
+    LoginBeginRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          minLength: 3
+          description: Username for login
+          example: "john_doe"
+
+    FinishRequest:
+      type: object
+      required:
+        - username
+        - session_id
+        - credentials
+      properties:
+        username:
+          type: string
+          minLength: 3
+          description: Username associated with the session
+          example: "john_doe"
+        session_id:
+          type: string
+          format: uuid
+          description: Session ID from the begin request
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        credentials:
+          type: object
+          description: WebAuthn credentials object (varies by operation)
+          example:
+            id: "Y3JlZGVudGlhbGlk"
+            rawId: "Y3JlZGVudGlhbGlk"
+            response: {}
+            type: "public-key"
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Valid JWT refresh token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    BeginResponse:
+      type: object
+      properties:
+        options:
+          type: object
+          description: WebAuthn options for client-side credential creation/authentication
+        session_id:
+          type: string
+          format: uuid
+          description: Session ID to use in the finish request
+          example: "123e4567-e89b-12d3-a456-426614174000"
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Registration completed successfully!"
+
+    TokenResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Login completed successfully!"
+        access_token:
+          type: string
+          description: JWT access token (valid for 24 hours)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refresh_token:
+          type: string
+          description: JWT refresh token (valid for 7 days)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Update token successfully!"
+        access_token:
+          type: string
+          description: New JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          type: string
+          description: Error message
+          example: "Bad request"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            invalid_username:
+              summary: Invalid username
+              value:
+                code: 400
+                message: "invalid username"
+            bad_request:
+              summary: Generic bad request
+              value:
+                code: 400
+                message: "bad request"
+
+    UsernameExists:
+      description: Conflict - username already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 409
+            message: "username already exists"
+
+    InvalidCredentials:
+      description: Unauthorized - invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            invalid_credentials:
+              summary: Invalid WebAuthn credentials
+              value:
+                code: 401
+                message: "invalid credentials"
+            invalid_session:
+              summary: Invalid session ID
+              value:
+                code: 401
+                message: "session id not valid"
+
+    InvalidToken:
+      description: Unauthorized - invalid or expired token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 401
+            message: "token expired"
+
+    UserNotFound:
+      description: Not found - user does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 404
+            message: "user not found"
+
+    SessionNotFound:
+      description: Not found - session does not exist or expired
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 404
+            message: "session not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 500
+            message: "internal server error"
