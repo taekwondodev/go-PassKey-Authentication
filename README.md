@@ -62,7 +62,7 @@ git clone https://github.com/taekwondodev/go-PassKey-Authentication.git # Clone 
 
 cd go-PassKey-Authentication # Change to the project directory
 
-docker-compose up --build # Start the application
+docker compose up --build # Start the application
 ```
 
 ## Project Structure
