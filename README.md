@@ -58,7 +58,7 @@ POSTGRES_DB=passkey_db
 ### Using Docker Compose (recommended)
 
 ```bash
-git clone https://github.com/yourusername/go-PassKey-Authentication.git # Clone the repository
+git clone https://github.com/taekwondodev/go-PassKey-Authentication.git # Clone the repository
 
 cd go-PassKey-Authentication # Change to the project directory
 
