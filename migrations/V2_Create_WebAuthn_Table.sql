@@ -4,10 +4,12 @@ CREATE TABLE credentials (
     public_key BYTEA NOT NULL,
     sign_count BIGINT NOT NULL,
     transports TEXT[],
-    aaguid UUID,
+    aaguid UUID NOT NULL,
     attestation_format TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX idx_credentials_user_id ON credentials(user_id);
 
 CREATE TABLE webauthn_sessions (
     id UUID PRIMARY KEY,
@@ -17,3 +19,5 @@ CREATE TABLE webauthn_sessions (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMP NOT NULL
 );
+
+CREATE INDEX idx_webauthn_sessions_id_purpose ON webauthn_sessions(id, purpose);
