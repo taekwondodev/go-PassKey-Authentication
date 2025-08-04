@@ -20,7 +20,8 @@ type AuthService interface {
 	FinishRegister(ctx context.Context, req *dto.FinishRequest) (*dto.MessageResponse, error)
 	BeginLogin(ctx context.Context, username string) (*dto.BeginResponse, error)
 	FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, error)
-	Refresh(req dto.RefreshTokenRequest) (*dto.TokenResponse, error)
+	Refresh(ctx context.Context, req dto.TokenRequest) (*dto.TokenResponse, error)
+	Logout(ctx context.Context, req dto.TokenRequest) (*dto.MessageResponse, error)
 }
 
 type service struct {

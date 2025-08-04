@@ -56,4 +56,5 @@ func (r *Router) setupLoginRoutes(authController controller.AuthController) {
 
 func (r *Router) setupTokenRoutes(authController controller.AuthController) {
 	r.mux.Handle("POST /refresh", r.applyMiddleware(authController.Refresh))
+	r.mux.Handle("POST /logout", r.applyMiddleware(authController.Logout))
 }

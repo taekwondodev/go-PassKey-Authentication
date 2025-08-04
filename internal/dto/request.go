@@ -41,11 +41,11 @@ func (r FinishRequest) Validate() error {
 	return nil
 }
 
-type RefreshTokenRequest struct {
+type TokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func (r RefreshTokenRequest) Validate() error {
+func (r TokenRequest) Validate() error {
 	if strings.TrimSpace(r.RefreshToken) == "" {
 		return customerrors.ErrBadRequest
 	}

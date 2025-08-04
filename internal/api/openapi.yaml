@@ -17,13 +17,14 @@ info:
     3. Call `POST /login/finish` with the authentication result
     4. Receive JWT access and refresh tokens
 
-    ### Token Refresh
-    - Use `POST /refresh` with a valid refresh token to get a new access token
+    ### Token Management
+      - Use `POST /refresh` with a valid refresh token to get a new access token
+      - Use `POST /logout` with an access token to invalidate it (blacklist in Redis)
 
     ## Security
     - All endpoints support CORS for frontend integration
     - WebAuthn provides FIDO2-compliant passwordless authentication
-    - JWT tokens are used for API authentication after login
+    - Token blacklisting via Redis for secure logout
   version: 1.0.0
   contact:
     name: Davide Galdiero
@@ -265,7 +266,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RefreshTokenRequest"
+              $ref: "#/components/schemas/TokenRequest"
             examples:
               token_refresh:
                 summary: Token refresh
@@ -277,13 +278,54 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RefreshTokenResponse"
+                $ref: "#/components/schemas/TokenResponse"
               examples:
                 success:
                   summary: Token refreshed
                   value:
                     message: "Update token successfully!"
                     access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/InvalidToken"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /logout:
+    post:
+      tags:
+        - Token Management
+      summary: Logout user
+      description: |
+        Invalidates the provided access token by adding it to a Redis blacklist.
+        The token will be rejected for any future requests until it naturally expires.
+      operationId: logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRequest"
+            examples:
+              user_logout:
+                summary: User logout
+                value:
+                  refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+      responses:
+        "200":
+          description: Logout completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                success:
+                  summary: Logout successful
+                  value:
+                    message: "Logout completed successfully!"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -369,7 +411,7 @@ components:
             response: {}
             type: "public-key"
 
-    RefreshTokenRequest:
+    TokenRequest:
       type: object
       required:
         - refresh_token
@@ -413,18 +455,6 @@ components:
         refresh_token:
           type: string
           description: JWT refresh token (valid for 7 days)
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-    RefreshTokenResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          description: Success message
-          example: "Update token successfully!"
-        access_token:
-          type: string
-          description: New JWT access token
           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
     Error:

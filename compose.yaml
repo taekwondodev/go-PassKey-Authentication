@@ -13,8 +13,11 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ORIGIN=${ORIGIN}
       - DATABASE_URL=${POSTGRES_URL}
+      - REDIS_URL=${REDIS_URL}
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   flyway:
@@ -52,6 +55,17 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:alpine
+    container_name: redis_passkey
+    networks:
+      - private_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 networks:
   public_network:
 
@@ -60,3 +74,4 @@ networks:
 
 volumes:
   postgres-data:
+  redis-data:

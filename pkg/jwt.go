@@ -35,23 +35,23 @@ func NewJWT() (*JWT, error) {
 }
 
 func (j *JWT) GenerateJWT(username, role string, sub uuid.UUID) (string, string, error) {
-	// Valid for 24 hours
+	// Valid for 5 mins
 	accessClaims := Claims{
 		Username: username,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 5)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   sub.String(),
 		},
 	}
 
-	// Valid for 7 days
+	// Valid for 1 day
 	refreshClaims := Claims{
 		Username: username,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   sub.String(),
 		},

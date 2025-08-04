@@ -15,6 +15,7 @@ type AuthController interface {
 	BeginLogin(w http.ResponseWriter, r *http.Request) error
 	FinishLogin(w http.ResponseWriter, r *http.Request) error
 	Refresh(w http.ResponseWriter, r *http.Request) error
+	Logout(w http.ResponseWriter, r *http.Request) error
 }
 
 type controller struct {

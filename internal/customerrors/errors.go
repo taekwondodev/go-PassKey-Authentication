@@ -19,6 +19,7 @@ var (
 	ErrUsernameAlreadyExists = &Error{Code: 409, Message: "username already exists"}
 	ErrSessionIdInvalid      = &Error{Code: 401, Message: "session id not valid"}
 	ErrInvalidCredentials    = &Error{Code: 401, Message: "invalid credentials"}
+	ErrTokenBlacklisted      = &Error{Code: 401, Message: "invalid or expired token"}
 	ErrSessionNotFound       = &Error{Code: 404, Message: "session not found"}
 	ErrUserNotFound          = &Error{Code: 404, Message: "user not found"}
 	ErrBadRequest            = &Error{Code: 400, Message: "bad request"}

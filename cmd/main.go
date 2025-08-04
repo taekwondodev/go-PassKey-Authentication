@@ -15,9 +15,12 @@ func main() {
 	defer pool.Close()
 	queries := db.New(pool)
 
+	redis := Must(config.ConnectRedis())
+	defer redis.Client.Close()
+
 	webauthn := Must(config.InitWebAuthn())
 	jwt := Must(pkg.NewJWT())
-	authRepo := repository.New(queries)
+	authRepo := repository.New(queries, redis)
 	authService := service.New(authRepo, jwt, webauthn)
 	authController := controller.New(authService)
 

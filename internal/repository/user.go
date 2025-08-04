@@ -2,9 +2,12 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/config"
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/models"
@@ -21,14 +24,22 @@ type UserRepository interface {
 	SaveCredentials(ctx context.Context, userID uuid.UUID, credentials *webauthn.Credential) error
 	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]db.Credential, error)
 	UpdateCredentials(ctx context.Context, credential *webauthn.Credential) error
+	BlacklistToken(ctx context.Context, token string, expiration time.Time) error
+	IsTokenBlacklisted(ctx context.Context, token string) (bool, error)
 }
 
 type repository struct {
-	queries *db.Queries
+	queries  *db.Queries
+	client   *redis.Client
+	hashSalt []byte
 }
 
-func New(queries *db.Queries) UserRepository {
-	return &repository{queries: queries}
+func New(queries *db.Queries, redis *config.RedisConfig) UserRepository {
+	return &repository{
+		queries:  queries,
+		client:   redis.Client,
+		hashSalt: redis.HashSalt,
+	}
 }
 
 func (r *repository) SaveUser(ctx context.Context, username, role string) (db.User, error) {
