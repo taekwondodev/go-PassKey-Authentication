@@ -20,9 +20,10 @@ func main() {
 
 	webauthn := Must(config.InitWebAuthn())
 	jwt := Must(pkg.NewJWT())
+	cookie := pkg.NewCookieHelper()
 	authRepo := repository.New(queries, redis)
 	authService := service.New(authRepo, jwt, webauthn)
-	authController := controller.New(authService)
+	authController := controller.New(authService, cookie)
 
 	router := api.SetupRoutes(authController)
 	server := api.NewServer(":8080", router)

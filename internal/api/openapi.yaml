@@ -15,7 +15,7 @@ info:
     1. Call `POST /login/begin` with username
     2. Use the returned options to authenticate with existing credentials
     3. Call `POST /login/finish` with the authentication result
-    4. Receive JWT access and refresh tokens
+    4. Receive JWT access token in response body, refresh token set as HTTP-only cookie
 
     ### Token Management
       - Use `POST /refresh` with a valid refresh token to get a new access token
@@ -24,6 +24,7 @@ info:
     ## Security
     - All endpoints support CORS for frontend integration
     - WebAuthn provides FIDO2-compliant passwordless authentication
+    - Refresh tokens in HTTP-only cookies for enhanced security
     - Token blacklisting via Redis for secure logout
   version: 1.0.0
   contact:
@@ -232,17 +233,31 @@ paths:
       responses:
         "200":
           description: Login completed successfully
+          headers:
+            Set-Cookie:
+              description: HTTP-only cookie containing the refresh token
+              schema:
+                type: string
+                example: "refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=86400"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TokenResponse"
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+                    example: "Login completed successfully!"
+                  access_token:
+                    type: string
+                    description: JWT access token (valid for 5 minutes)
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               examples:
                 success:
                   summary: Login successful
                   value:
                     message: "Login completed successfully!"
                     access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -258,34 +273,59 @@ paths:
         - Token Management
       summary: Refresh access token
       description: |
-        Generates a new access token using a valid refresh token.
+        Generates a new access token using the refresh token from HTTP-only cookie.
         The refresh token must be valid and not expired.
+
+        **Note**: This endpoint requires the refresh token to be sent via HTTP-only cookie,
+        not in the request body. Make sure to include `credentials: 'include'` in your fetch request.
       operationId: refreshToken
+      parameters:
+        - name: Cookie
+          in: header
+          description: HTTP-only cookie containing the refresh token
+          required: true
+          schema:
+            type: string
+            example: "refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TokenRequest"
+              type: object
+              properties: {}
             examples:
-              token_refresh:
-                summary: Token refresh
-                value:
-                  refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              empty_body:
+                summary: Empty Request Body
+                value: {}
       responses:
         "200":
           description: Token refreshed successfully
+          headers:
+            Set-Cookie:
+              description: New HTTP-only cookie containing the updated refresh token
+              schema:
+                type: string
+                example: "refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=86400"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TokenResponse"
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+                    example: "Update token successfully!"
+                  access_token:
+                    type: string
+                    description: New JWT access token (valid for 5 minutes)
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               examples:
                 success:
                   summary: Token refreshed
                   value:
                     message: "Update token successfully!"
                     access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -299,24 +339,41 @@ paths:
         - Token Management
       summary: Logout user
       description: |
-        Invalidates the provided access token by adding it to a Redis blacklist.
+        Invalidates the refresh token by adding it to a Redis blacklist and clears the HTTP-only cookie.
         The token will be rejected for any future requests until it naturally expires.
+
+        **Note**: This endpoint reads the refresh token from HTTP-only cookie,
+        not from the request body. Make sure to include `credentials: 'include'` in your fetch request.
       operationId: logout
+      parameters:
+        - name: Cookie
+          in: header
+          description: HTTP-only cookie containing the refresh token to invalidate (optional for the logout)
+          required: false
+          schema:
+            type: string
+            example: "refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TokenRequest"
+              type: object
+              properties: {}
             examples:
-              user_logout:
-                summary: User logout
-                value:
-                  refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              empty_body:
+                summary: Empty Request Body
+                value: {}
 
       responses:
         "200":
           description: Logout completed successfully
+          headers:
+            Set-Cookie:
+              description: HTTP-only cookie cleared after logout
+              schema:
+                type: string
+                example: "refresh_token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0"
           content:
             application/json:
               schema:
@@ -450,11 +507,7 @@ components:
           example: "Login completed successfully!"
         access_token:
           type: string
-          description: JWT access token (valid for 24 hours)
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        refresh_token:
-          type: string
-          description: JWT refresh token (valid for 7 days)
+          description: JWT access token (valid for 5 mins)
           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
     Error:

@@ -19,9 +19,9 @@ type AuthService interface {
 	BeginRegister(ctx context.Context, username, role string) (*dto.BeginResponse, error)
 	FinishRegister(ctx context.Context, req *dto.FinishRequest) (*dto.MessageResponse, error)
 	BeginLogin(ctx context.Context, username string) (*dto.BeginResponse, error)
-	FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, error)
-	Refresh(ctx context.Context, req dto.TokenRequest) (*dto.TokenResponse, error)
-	Logout(ctx context.Context, req dto.TokenRequest) (*dto.MessageResponse, error)
+	FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, string, error)
+	Refresh(ctx context.Context, token string) (*dto.TokenResponse, string, error)
+	Logout(ctx context.Context, token string) (*dto.MessageResponse, error)
 }
 
 type service struct {
@@ -124,56 +124,57 @@ func (s *service) BeginLogin(ctx context.Context, username string) (*dto.BeginRe
 	}, nil
 }
 
-func (s *service) FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, error) {
+func (s *service) FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, string, error) {
 	sessionUUID, user, err := s.getUser(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	creds, err := s.repo.GetCredentialsByUserID(ctx, user.ID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	session, err := s.repo.GetLoginSession(ctx, sessionUUID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var sessionData webauthn.SessionData
 	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
-		return nil, customerrors.ErrInternalServer
+		return nil, "", customerrors.ErrInternalServer
 	}
 
 	parsedResponse, err := protocol.ParseCredentialRequestResponseBytes(req.Credentials)
 	if err != nil {
-		return nil, customerrors.ErrInvalidCredentials
+		return nil, "", customerrors.ErrInvalidCredentials
 	}
 
 	webauthnUser := models.New(user, creds)
 	credential, err := s.webauthn.ValidateLogin(webauthnUser, sessionData, parsedResponse)
 	if err != nil {
-		return nil, customerrors.ErrInvalidCredentials
+		return nil, "", customerrors.ErrInvalidCredentials
 	}
 
 	if err := s.repo.UpdateCredentials(ctx, credential); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if err := s.repo.DeleteSession(ctx, sessionUUID); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	accessToken, refreshToken, err := s.jwt.GenerateJWT(req.Username, user.Role, user.ID)
 	if err != nil {
-		return nil, customerrors.ErrInternalServer
+		return nil, "", customerrors.ErrInternalServer
 	}
 
 	return &dto.TokenResponse{
-		Message:      "Login completed successfully!",
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+			Message:     "Login completed successfully!",
+			AccessToken: accessToken,
+		},
+		refreshToken,
+		nil
 }
 
 func (s *service) getUser(ctx context.Context, req *dto.FinishRequest) (uuid.UUID, db.User, error) {

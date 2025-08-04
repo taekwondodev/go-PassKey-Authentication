@@ -41,17 +41,6 @@ func (r FinishRequest) Validate() error {
 	return nil
 }
 
-type TokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-func (r TokenRequest) Validate() error {
-	if strings.TrimSpace(r.RefreshToken) == "" {
-		return customerrors.ErrBadRequest
-	}
-	return nil
-}
-
 func checkUsername(username string) error {
 	if strings.TrimSpace(username) == "" {
 		return customerrors.ErrInvalidUsername

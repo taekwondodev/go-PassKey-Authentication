@@ -7,6 +7,7 @@ import (
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/dto"
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/service"
+	"github.com/taekwondodev/go-PassKey-Authentication/pkg"
 )
 
 type AuthController interface {
@@ -20,10 +21,14 @@ type AuthController interface {
 
 type controller struct {
 	authService service.AuthService
+	tokenCookie pkg.CookieHelper
 }
 
-func New(authService service.AuthService) AuthController {
-	return &controller{authService: authService}
+func New(authService service.AuthService, tokenCookie pkg.CookieHelper) AuthController {
+	return &controller{
+		authService: authService,
+		tokenCookie: tokenCookie,
+	}
 }
 
 type Validator interface {
@@ -93,11 +98,12 @@ func (c *controller) FinishLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	res, err := c.authService.FinishLogin(r.Context(), req)
+	res, newToken, err := c.authService.FinishLogin(r.Context(), req)
 	if err != nil {
 		return err
 	}
 
+	c.tokenCookie.SetRefreshTokenCookie(w, newToken)
 	return c.respond(w, http.StatusOK, res)
 }
 

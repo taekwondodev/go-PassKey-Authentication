@@ -8,9 +8,6 @@ import (
 func CorsMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := os.Getenv("ORIGIN")
-		if origin == "" {
-			panic("ORIGIN not defined")
-		}
 
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
