@@ -11,8 +11,6 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// controllare se attualmente dopo il ttl si elimina in automatico
-
 func (r *repository) IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
 	tokenHash := r.hashToken(token)
 	redisKey := fmt.Sprintf("blacklist:%s", tokenHash)
@@ -29,7 +27,6 @@ func (r *repository) BlacklistToken(ctx context.Context, token string, expiratio
 	tokenHash := r.hashToken(token)
 	redisKey := fmt.Sprintf("blacklist:%s", tokenHash)
 
-	// Calculate TTL based on token expiration
 	ttl := time.Until(expiration)
 	if ttl <= 0 {
 		return nil

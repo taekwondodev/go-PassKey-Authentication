@@ -27,7 +27,6 @@ type CookieHelper interface {
 type CookieToken struct {
 	Configs                *CookieConfig
 	refreshTokenCookieName string
-	expirationTokenCookie  time.Time
 }
 
 func NewCookieHelper() CookieHelper {
@@ -50,20 +49,19 @@ func NewCookieHelper() CookieHelper {
 		config.SameSite = http.SameSiteLaxMode // Use lax mode for localhost
 	}
 
-	expiration := time.Now().Add(24 * time.Hour)
 	return &CookieToken{
 		Configs:                config,
 		refreshTokenCookieName: RefreshTokenCookieName,
-		expirationTokenCookie:  expiration,
 	}
 }
 
 func (c *CookieToken) SetRefreshTokenCookie(w http.ResponseWriter, token string) {
+	expiration := time.Now().Add(24 * time.Hour)
 	cookie := &http.Cookie{
 		Name:     c.refreshTokenCookieName,
 		Value:    token,
 		Path:     c.Configs.Path,
-		Expires:  c.expirationTokenCookie,
+		Expires:  expiration,
 		MaxAge:   c.Configs.MaxAge,
 		HttpOnly: c.Configs.HttpOnly,
 		Secure:   c.Configs.Secure,
