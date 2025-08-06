@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -87,9 +89,7 @@ func (s *service) FinishRegister(ctx context.Context, req *dto.FinishRequest) (*
 		return nil, err
 	}
 
-	if err := s.repo.DeleteSession(ctx, sessionUUID); err != nil {
-		return nil, err
-	}
+	go s.deleteSession(sessionUUID)
 
 	return &dto.MessageResponse{
 		Message: "Registration completed successfully!",
@@ -160,14 +160,12 @@ func (s *service) FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto
 		return nil, "", err
 	}
 
-	if err := s.repo.DeleteSession(ctx, sessionUUID); err != nil {
+	accessToken, refreshToken, err := s.jwt.GenerateJWT(req.Username, user.Role, user.ID)
+	if err != nil {
 		return nil, "", err
 	}
 
-	accessToken, refreshToken, err := s.jwt.GenerateJWT(req.Username, user.Role, user.ID)
-	if err != nil {
-		return nil, "", customerrors.ErrInternalServer
-	}
+	go s.deleteSession(sessionUUID)
 
 	return &dto.TokenResponse{
 			Message:     "Login completed successfully!",
@@ -188,4 +186,13 @@ func (s *service) getUser(ctx context.Context, req *dto.FinishRequest) (uuid.UUI
 		return uuid.Nil, db.User{}, err
 	}
 	return sessionUUID, user, nil
+}
+
+func (s *service) deleteSession(sessionUUID uuid.UUID) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	if err := s.repo.DeleteSession(ctx, sessionUUID); err != nil {
+		fmt.Println("delete session not completed: ", err)
+	}
 }
