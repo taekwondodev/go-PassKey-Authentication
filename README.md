@@ -106,3 +106,11 @@ go-PassKey-Authentication/
 - **Automatic TTL cleanup** of blacklisted tokens
 - **Graceful error** handling
 - **Request validation** and sanitization
+
+## Testing
+
+To run the unit tests run the command in the main directory (locally):
+
+```bash
+go test ./...
+```
