@@ -100,6 +100,13 @@ const (
 	testTransportUSB    = "usb"
 	testTransportNFC    = "nfc"
 
+	// Token test data
+	testToken        = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token"
+	testToken2       = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token2"
+	testExpiredToken = "expired.jwt.token"
+	testInvalidToken = "invalid-token"
+	testTokenHash    = "blacklist:test-hash"
+
 	// Test descriptions
 	descSuccessfulCreation  = "successful user creation"
 	descUserAlreadyExists   = "user already exists"
@@ -477,6 +484,23 @@ type updateCredentialTestCase struct {
 	credential    *webauthn.Credential
 	setupMock     func(mockDB pgxmock.PgxPoolIface)
 	expectedError error
+}
+
+type blacklistTokenTestCase struct {
+	name          string
+	token         string
+	expiration    time.Time
+	expectedError error
+	description   string
+}
+
+type isTokenBlacklistedTestCase struct {
+	name           string
+	token          string
+	expectedResult bool
+	expectedError  error
+	setupRedis     func(client *redis.Client)
+	description    string
 }
 
 func TestSaveUser(t *testing.T) {
@@ -1475,6 +1499,32 @@ func runDeleteSessionTests(t *testing.T, tests []deleteSessionTestCase) {
 	}
 }
 
+// Benchmark tests for token operations
+func BenchmarkBlacklistToken(b *testing.B) {
+	_, _, repo := setupMockRepo(&testing.T{})
+	expiration := time.Now().Add(1 * time.Hour)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		token := fmt.Sprintf("benchmark-token-%d", i)
+		repo.BlacklistToken(context.Background(), token, expiration)
+	}
+}
+
+func BenchmarkIsTokenBlacklisted(b *testing.B) {
+	_, _, repo := setupMockRepo(&testing.T{})
+	token := testToken
+	expiration := time.Now().Add(1 * time.Hour)
+
+	// Pre-blacklist a token
+	repo.BlacklistToken(context.Background(), token, expiration)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		repo.IsTokenBlacklisted(context.Background(), token)
+	}
+}
+
 // Benchmark tests for credential operations
 func BenchmarkSaveCredentials(b *testing.B) {
 	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
@@ -1487,6 +1537,410 @@ func BenchmarkSaveCredentials(b *testing.B) {
 		expectCreateCredentialSuccess(mockDB)
 		b.StartTimer()
 		repo.SaveCredentials(context.Background(), userID, credential)
+	}
+}
+
+func TestBlacklistToken(t *testing.T) {
+	tests := []blacklistTokenTestCase{
+		{
+			name:          "successful token blacklist",
+			token:         testToken,
+			expiration:    time.Now().Add(1 * time.Hour),
+			expectedError: nil,
+			description:   "Valid token with future expiration should be blacklisted",
+		},
+		{
+			name:          "token with past expiration",
+			token:         testExpiredToken,
+			expiration:    time.Now().Add(-1 * time.Hour),
+			expectedError: nil,
+			description:   "Token with past expiration should return nil (no-op)",
+		},
+		{
+			name:          "token with zero expiration",
+			token:         testToken,
+			expiration:    time.Now(),
+			expectedError: nil,
+			description:   "Token with current time expiration should return nil",
+		},
+		{
+			name:          "empty token",
+			token:         "",
+			expiration:    time.Now().Add(1 * time.Hour),
+			expectedError: nil,
+			description:   "Empty token should be handled gracefully",
+		},
+		{
+			name:          "very long token",
+			token:         "very.long.token.that.might.cause.issues.in.some.systems.with.very.long.jwt.tokens.that.exceed.normal.length.limits",
+			expiration:    time.Now().Add(2 * time.Hour),
+			expectedError: nil,
+			description:   "Very long token should be handled correctly",
+		},
+		{
+			name:          "token with special characters",
+			token:         "token.with-special_chars+and/symbols=",
+			expiration:    time.Now().Add(30 * time.Minute),
+			expectedError: nil,
+			description:   "Token with special characters should be handled",
+		},
+		{
+			name:          "duplicate token blacklist attempt",
+			token:         testToken,
+			expiration:    time.Now().Add(1 * time.Hour),
+			expectedError: nil,
+			description:   "Attempting to blacklist same token twice should not error",
+		},
+		{
+			name:          "token with minimal expiration",
+			token:         "minimal.expiration.token",
+			expiration:    time.Now().Add(1 * time.Millisecond),
+			expectedError: nil,
+			description:   "Token with very short expiration should be handled",
+		},
+	}
+
+	runBlacklistTokenTests(t, tests)
+}
+
+func TestIsTokenBlacklisted(t *testing.T) {
+	tests := []isTokenBlacklistedTestCase{
+		{
+			name:           "token is blacklisted",
+			token:          testToken,
+			expectedResult: true,
+			expectedError:  nil,
+			setupRedis: func(client *redis.Client) {
+				// No setup needed - we'll blacklist in the test itself
+			},
+			description: "Blacklisted token should return true",
+		},
+		{
+			name:           "token is not blacklisted",
+			token:          testToken2,
+			expectedResult: false,
+			expectedError:  nil,
+			setupRedis: func(client *redis.Client) {
+				// No setup needed - token not in Redis
+			},
+			description: "Non-blacklisted token should return false",
+		},
+		{
+			name:           "empty token check",
+			token:          "",
+			expectedResult: false,
+			expectedError:  nil,
+			setupRedis: func(client *redis.Client) {
+				// No setup needed
+			},
+			description: "Empty token should return false",
+		},
+		{
+			name:           "invalid token format",
+			token:          testInvalidToken,
+			expectedResult: false,
+			expectedError:  nil,
+			setupRedis: func(client *redis.Client) {
+				// No setup needed
+			},
+			description: "Invalid token format should return false",
+		},
+		{
+			name:           "check multiple tokens",
+			token:          testToken,
+			expectedResult: false,
+			expectedError:  nil,
+			setupRedis: func(client *redis.Client) {
+				// Set up multiple tokens but not the one we're checking
+				ctx := context.Background()
+				client.Set(ctx, "blacklist:other1", "1", time.Hour)
+				client.Set(ctx, "blacklist:other2", "1", time.Hour)
+			},
+			description: "Token should not be found among other blacklisted tokens",
+		},
+		{
+			name:           "very long token check",
+			token:          "very.long.token.that.might.cause.issues.in.some.systems.with.very.long.jwt.tokens.that.exceed.normal.length.limits",
+			expectedResult: false,
+			expectedError:  nil,
+			setupRedis: func(client *redis.Client) {
+				// No setup needed
+			},
+			description: "Very long token should be handled correctly",
+		},
+		{
+			name:           "token with unicode characters",
+			token:          "token.with.unicode.测试.字符",
+			expectedResult: false,
+			expectedError:  nil,
+			setupRedis: func(client *redis.Client) {
+				// No setup needed
+			},
+			description: "Token with unicode characters should be handled",
+		},
+	}
+
+	runIsTokenBlacklistedTests(t, tests)
+}
+
+func TestTokenBlacklistIntegrationFlow(t *testing.T) {
+	t.Run("complete token blacklist lifecycle", func(t *testing.T) {
+		mockDB, mr, repo := setupMockRepo(t)
+		token := testToken
+		expiration := time.Now().Add(1 * time.Hour)
+
+		// Check token is not blacklisted initially
+		isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), token)
+		if err != nil {
+			t.Errorf("Expected no error checking token, got %v", err)
+		}
+		if isBlacklisted {
+			t.Error("Expected token to not be blacklisted initially")
+		}
+
+		// Blacklist the token
+		err = repo.BlacklistToken(context.Background(), token, expiration)
+		if err != nil {
+			t.Errorf("Expected no error blacklisting token, got %v", err)
+		}
+
+		// Check token is now blacklisted
+		isBlacklisted, err = repo.IsTokenBlacklisted(context.Background(), token)
+		if err != nil {
+			t.Errorf("Expected no error checking blacklisted token, got %v", err)
+		}
+		if !isBlacklisted {
+			t.Error("Expected token to be blacklisted")
+		}
+
+		// Clean up
+		_ = mockDB
+		_ = mr
+	})
+
+	t.Run("expired token cleanup", func(t *testing.T) {
+		_, mr, repo := setupMockRepo(t)
+		token := testExpiredToken
+
+		// Blacklist token with short expiration
+		shortExpiration := time.Now().Add(100 * time.Millisecond)
+		err := repo.BlacklistToken(context.Background(), token, shortExpiration)
+		if err != nil {
+			t.Errorf("Failed to blacklist token: %v", err)
+		}
+
+		// Verify token is initially blacklisted
+		isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), token)
+		if err != nil {
+			t.Errorf("Expected no error checking token, got %v", err)
+		}
+		if !isBlacklisted {
+			t.Error("Expected token to be blacklisted initially")
+		}
+
+		// Fast forward time in miniredis to simulate expiration
+		mr.FastForward(2 * time.Hour)
+
+		// Check that expired token is no longer blacklisted
+		isBlacklisted, err = repo.IsTokenBlacklisted(context.Background(), token)
+		if err != nil {
+			t.Errorf("Expected no error checking expired token, got %v", err)
+		}
+		if isBlacklisted {
+			t.Error("Expected expired token to not be blacklisted")
+		}
+	})
+
+	t.Run("multiple tokens management", func(t *testing.T) {
+		_, _, repo := setupMockRepo(t)
+		tokens := []string{
+			"token1.jwt.test",
+			"token2.jwt.test",
+			"token3.jwt.test",
+		}
+		expiration := time.Now().Add(1 * time.Hour)
+
+		// Blacklist multiple tokens
+		for _, token := range tokens {
+			err := repo.BlacklistToken(context.Background(), token, expiration)
+			if err != nil {
+				t.Errorf("Failed to blacklist token %s: %v", token, err)
+			}
+		}
+
+		// Verify all tokens are blacklisted
+		for _, token := range tokens {
+			isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), token)
+			if err != nil {
+				t.Errorf("Error checking token %s: %v", token, err)
+			}
+			if !isBlacklisted {
+				t.Errorf("Expected token %s to be blacklisted", token)
+			}
+		}
+
+		// Verify a non-blacklisted token is not affected
+		nonBlacklistedToken := "clean.token.test"
+		isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), nonBlacklistedToken)
+		if err != nil {
+			t.Errorf("Error checking clean token: %v", err)
+		}
+		if isBlacklisted {
+			t.Error("Expected clean token to not be blacklisted")
+		}
+	})
+}
+
+func TestTokenHashingConsistency(t *testing.T) {
+	t.Run("same token produces same hash", func(t *testing.T) {
+		_, _, repo := setupMockRepo(t)
+
+		// Access the private hashToken method through blacklisting
+		token := testToken
+		expiration := time.Now().Add(1 * time.Hour)
+
+		// Blacklist token first time
+		err1 := repo.BlacklistToken(context.Background(), token, expiration)
+		if err1 != nil {
+			t.Errorf("First blacklist attempt failed: %v", err1)
+		}
+
+		// Check token is blacklisted
+		isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), token)
+		if err != nil {
+			t.Errorf("Error checking token: %v", err)
+		}
+		if !isBlacklisted {
+			t.Error("Token should be blacklisted after first attempt")
+		}
+
+		// Try to blacklist same token again - should not error but may not change anything due to NX flag
+		err2 := repo.BlacklistToken(context.Background(), token, expiration)
+		// Note: err2 might be nil (Redis NX behavior) - this is expected
+
+		// Token should still be blacklisted regardless
+		isBlacklisted2, err := repo.IsTokenBlacklisted(context.Background(), token)
+		if err != nil {
+			t.Errorf("Error checking token after second blacklist: %v", err)
+		}
+		if !isBlacklisted2 {
+			t.Error("Token should still be blacklisted after second attempt")
+		}
+
+		// Test with different token to verify hashing works correctly
+		differentToken := testToken2
+		isDifferentBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), differentToken)
+		if err != nil {
+			t.Errorf("Error checking different token: %v", err)
+		}
+		if isDifferentBlacklisted {
+			t.Error("Different token should not be blacklisted")
+		}
+
+		// Suppress unused variable warning
+		_ = err2
+	})
+
+	t.Run("token hashing security", func(t *testing.T) {
+		_, _, repo := setupMockRepo(t)
+
+		// Test that similar tokens produce different hashes
+		tokens := []string{
+			"token.test.1",
+			"token.test.2",
+			"token_test_1",
+			"token-test-1",
+		}
+		expiration := time.Now().Add(1 * time.Hour)
+
+		// Blacklist first token
+		err := repo.BlacklistToken(context.Background(), tokens[0], expiration)
+		if err != nil {
+			t.Errorf("Failed to blacklist first token: %v", err)
+		}
+
+		// Verify first token is blacklisted
+		isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), tokens[0])
+		if err != nil {
+			t.Errorf("Error checking first token: %v", err)
+		}
+		if !isBlacklisted {
+			t.Error("Expected first token to be blacklisted")
+		}
+
+		// Verify similar tokens are NOT blacklisted
+		for i, token := range tokens[1:] {
+			isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), token)
+			if err != nil {
+				t.Errorf("Error checking token %d: %v", i+1, err)
+			}
+			if isBlacklisted {
+				t.Errorf("Expected token %d (%s) to NOT be blacklisted", i+1, token)
+			}
+		}
+	})
+}
+
+// Token test runners
+func runBlacklistTokenTests(t *testing.T, tests []blacklistTokenTestCase) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, repo := setupMockRepo(t)
+
+			err := repo.BlacklistToken(context.Background(), tt.token, tt.expiration)
+
+			if tt.expectedError != nil {
+				if err != tt.expectedError {
+					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, got %v", err)
+				}
+			}
+		})
+	}
+}
+
+func runIsTokenBlacklistedTests(t *testing.T, tests []isTokenBlacklistedTestCase) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, mr, repo := setupMockRepo(t)
+
+			// For the blacklisted token test, actually blacklist it first
+			if tt.expectedResult == true {
+				expiration := time.Now().Add(1 * time.Hour)
+				err := repo.BlacklistToken(context.Background(), tt.token, expiration)
+				if err != nil {
+					t.Errorf("Failed to blacklist token for test: %v", err)
+				}
+			}
+
+			// Setup Redis state if needed
+			if tt.setupRedis != nil {
+				// Get Redis client from miniredis
+				client := redis.NewClient(&redis.Options{
+					Addr: mr.Addr(),
+				})
+				defer client.Close()
+				tt.setupRedis(client)
+			}
+
+			result, err := repo.IsTokenBlacklisted(context.Background(), tt.token)
+
+			if tt.expectedError != nil {
+				if err != tt.expectedError {
+					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, got %v", err)
+				}
+				if result != tt.expectedResult {
+					t.Errorf("Expected result %v, got %v", tt.expectedResult, result)
+				}
+			}
+		})
 	}
 }
 
