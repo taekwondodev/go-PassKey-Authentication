@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/dto"
@@ -40,14 +41,18 @@ func (s *service) Refresh(ctx context.Context, token string) (*dto.TokenResponse
 
 func (s *service) Logout(ctx context.Context, token string) (*dto.MessageResponse, error) {
 	if token != "" {
-		if claims, err := s.jwt.ValidateJWT(token); err == nil {
-			if err := s.repo.BlacklistToken(ctx, token, claims.ExpiresAt.Time); err != nil {
-				return nil, err
-			}
-		}
+		go s.blackListToken(context.Background(), token)
 	}
 
 	return &dto.MessageResponse{
 		Message: "Logout completed successfully!",
 	}, nil
+}
+
+func (s *service) blackListToken(ctx context.Context, token string) {
+	if claims, err := s.jwt.ValidateJWT(token); err == nil {
+		if err := s.repo.BlacklistToken(ctx, token, claims.ExpiresAt.Time); err != nil {
+			fmt.Println("Failed to blacklist token on logout:", err)
+		}
+	}
 }
