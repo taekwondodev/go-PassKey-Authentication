@@ -127,7 +127,7 @@ func (m *mockAuthRepository) IsTokenBlacklisted(ctx context.Context, token strin
 	return args.Bool(0), args.Error(1)
 }
 
-func createTestWebAuthn() *webauthn.WebAuthn {
+func createTestWebAuthn(t *testing.T) *webauthn.WebAuthn {
 	config := &webauthn.Config{
 		RPDisplayName: "Test Application",
 		RPID:          "localhost",
@@ -137,16 +137,16 @@ func createTestWebAuthn() *webauthn.WebAuthn {
 
 	webAuthn, err := webauthn.New(config)
 	if err != nil {
-		panic("Failed to create WebAuthn instance for testing: " + err.Error())
+		t.Fatal("Failed to create WebAuthn instance for testing: " + err.Error())
 	}
 
 	return webAuthn
 }
 
-func setupService() (*mockAuthRepository, *mockToken, AuthService) {
+func setupService(t *testing.T) (*mockAuthRepository, *mockToken, AuthService) {
 	mockRepo := new(mockAuthRepository)
 	mockToken := new(mockToken)
-	testWebAuthn := createTestWebAuthn()
+	testWebAuthn := createTestWebAuthn(t)
 	authService := New(mockRepo, mockToken, testWebAuthn)
 	return mockRepo, mockToken, authService
 }
@@ -268,7 +268,7 @@ func TestBeginRegister(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			mockRepo, _, authService := setupService()
+			mockRepo, _, authService := setupService(t)
 			tc.setupMocks(mockRepo)
 
 			// Execute
