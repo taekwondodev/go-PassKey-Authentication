@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/db"
@@ -273,6 +274,252 @@ func TestBeginRegister(t *testing.T) {
 
 			// Execute
 			result, err := authService.BeginRegister(context.Background(), tc.username, tc.role)
+
+			// Assert
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			tc.validateResult(t, result)
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+/*********************************************************************************************************************************/
+
+// Note: Testing the successful case with WebAuthn credential creation requires
+// real WebAuthn credential data and is better suited for integration tests.
+// The error paths tested below cover the main failure scenarios for unit testing.
+
+func TestFinishRegister(t *testing.T) {
+	testCases := []struct {
+		name           string
+		request        *dto.FinishRequest
+		setupMocks     func(*mockAuthRepository)
+		expectedError  bool
+		validateResult func(*testing.T, *dto.MessageResponse)
+	}{
+		{
+			name: "invalid session ID format",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   "invalid-uuid",
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				// No mocks needed as getUser should fail early
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "user not found",
+			request: &dto.FinishRequest{
+				Username:    "nonexistent",
+				SessionID:   uuid.New().String(),
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				mockRepo.On("GetUserByUsername", mock.Anything, "nonexistent").Return(nil, assert.AnError)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "register session not found",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   uuid.New().String(),
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				testUser := createTestUser(testUsername, userRole)
+				mockRepo.On("GetUserByUsername", mock.Anything, testUsername).Return(testUser, nil)
+				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(nil, assert.AnError)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "invalid session data format",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   uuid.New().String(),
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				testUser := createTestUser(testUsername, userRole)
+				mockRepo.On("GetUserByUsername", mock.Anything, testUsername).Return(testUser, nil)
+
+				// Invalid JSON in session data
+				invalidSessionData := []byte(`invalid json`)
+				session := db.WebauthnSession{
+					ID:        uuid.New(),
+					UserID:    testUser.ID,
+					Data:      invalidSessionData,
+					CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+				}
+				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(session, nil)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "empty username",
+			request: &dto.FinishRequest{
+				Username:    emptyString,
+				SessionID:   uuid.New().String(),
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				mockRepo.On("GetUserByUsername", mock.Anything, emptyString).Return(nil, assert.AnError)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "empty session ID",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   emptyString,
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				// No mocks needed as getUser should fail early
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "nil credentials",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   uuid.New().String(),
+				Credentials: nil,
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				testUser := createTestUser(testUsername, userRole)
+				mockRepo.On("GetUserByUsername", mock.Anything, testUsername).Return(testUser, nil)
+
+				sessionData := []byte(`{"challenge":"dGVzdA","user_id":"dGVzdA","allowed_credentials":null,"user_verification":"preferred","extensions":null}`)
+				session := db.WebauthnSession{
+					ID:        uuid.New(),
+					UserID:    testUser.ID,
+					Data:      sessionData,
+					CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+				}
+				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(session, nil)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "empty credentials",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   uuid.New().String(),
+				Credentials: []byte{},
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				testUser := createTestUser(testUsername, userRole)
+				mockRepo.On("GetUserByUsername", mock.Anything, testUsername).Return(testUser, nil)
+
+				sessionData := []byte(`{"challenge":"dGVzdA","user_id":"dGVzdA","allowed_credentials":null,"user_verification":"preferred","extensions":null}`)
+				session := db.WebauthnSession{
+					ID:        uuid.New(),
+					UserID:    testUser.ID,
+					Data:      sessionData,
+					CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+				}
+				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(session, nil)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "malformed JSON credentials",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   uuid.New().String(),
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test"`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				testUser := createTestUser(testUsername, userRole)
+				mockRepo.On("GetUserByUsername", mock.Anything, testUsername).Return(testUser, nil)
+
+				sessionData := []byte(`{"challenge":"dGVzdA","user_id":"dGVzdA","allowed_credentials":null,"user_verification":"preferred","extensions":null}`)
+				session := db.WebauthnSession{
+					ID:        uuid.New(),
+					UserID:    testUser.ID,
+					Data:      sessionData,
+					CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+				}
+				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(session, nil)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "username with only whitespace",
+			request: &dto.FinishRequest{
+				Username:    "   ",
+				SessionID:   uuid.New().String(),
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				mockRepo.On("GetUserByUsername", mock.Anything, "   ").Return(nil, assert.AnError)
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "session ID with only whitespace",
+			request: &dto.FinishRequest{
+				Username:    testUsername,
+				SessionID:   "   ",
+				Credentials: []byte(`{"rawId":"test","response":{"clientDataJSON":"test","attestationObject":"test"}}`),
+			},
+			setupMocks: func(mockRepo *mockAuthRepository) {
+				// No mocks needed as getUser should fail early
+			},
+			expectedError: true,
+			validateResult: func(t *testing.T, result *dto.MessageResponse) {
+				assert.Nil(t, result)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			mockRepo, _, authService := setupService(t)
+			tc.setupMocks(mockRepo)
+
+			// Execute
+			result, err := authService.FinishRegister(context.Background(), tc.request)
 
 			// Assert
 			if tc.expectedError {
