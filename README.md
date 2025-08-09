@@ -112,5 +112,5 @@ go-PassKey-Authentication/
 To run the unit tests run the command in the main directory (locally):
 
 ```bash
-go test ./...
+go test ./internal/service/... ./internal/repository/...
 ```
