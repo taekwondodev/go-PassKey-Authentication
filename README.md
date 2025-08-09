@@ -91,6 +91,7 @@ go-PassKey-Authentication/
 ├── 📁 query/                 # SQL queries (SQLC)
 ├── 🐳 Dockerfile
 ├── 🐳 compose.yaml
+├── 🏗️ bake.hcl
 └── ⚙️ sqlc.yaml
 ```
 
