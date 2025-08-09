@@ -44,7 +44,7 @@ Complete API documentation is available in OpenAPI 3.0 format:
 
 ### Prerequisites
 
-- Go 1.24.5+
+- Go 1.24.5+ (locally)
 - Docker
 
 ### Example Configuration
@@ -67,7 +67,7 @@ git clone https://github.com/taekwondodev/go-PassKey-Authentication.git # Clone 
 
 cd go-PassKey-Authentication # Change to the project directory
 
-docker compose up --build # Start the application
+docker buildx bake && docker compose up # Start the application
 ```
 
 ## Project Structure
@@ -107,10 +107,10 @@ go-PassKey-Authentication/
 - **Graceful error** handling
 - **Request validation** and sanitization
 
-## Testing
+## Testing (using Docker recommended)
 
-To run the unit tests run the command in the main directory (locally):
+To run the unit tests run the command in the main directory:
 
 ```bash
-go test -v ./internal/service/... ./internal/repository/...
+docker buildx bake test --progress=plain
 ```

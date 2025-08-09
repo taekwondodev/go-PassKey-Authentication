@@ -28,8 +28,11 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+*.md
+*_test.go
+*.test
 LICENSE
-README.md
 migrations/
 query/
 sqlc.yaml
+docker-bake.hcl
