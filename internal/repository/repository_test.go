@@ -118,6 +118,40 @@ const (
 	descSessionRetrieve     = "successful session retrieval"
 	descSessionNotFound     = "session not found"
 	descSessionDelete       = "successful session deletion"
+
+	// Common error and validation messages
+	msgUnmetExpectations             = "Unmet expectations: %v"
+	msgExpectedNonNilSessionID       = "Expected non-nil session ID"
+	msgExpectedSessionID             = "Expected session ID %v, got %v"
+	msgExpectedPurpose               = "Expected purpose %s, got %s"
+	msgExpectedNoError               = "Expected no error, got %v"
+	msgExpectedNoErrorSaving         = "Expected no error saving session, got %v"
+	msgExpectedNoErrorRetrieving     = "Expected no error retrieving session, got %v"
+	msgExpectedNoErrorDeleting       = "Expected no error deleting session, got %v"
+	msgExpectedNoErrorCreating       = "Expected no error creating user, got %v"
+	msgExpectedNoErrorSavingCred     = "Expected no error saving credential, got %v"
+	msgExpectedNoErrorRetrievingCred = "Expected no error retrieving credentials, got %v"
+	msgExpectedNoErrorUpdating       = "Expected no error updating credential, got %v"
+	msgExpectedNoErrorChecking       = "Expected no error checking token, got %v"
+	msgExpectedNoErrorBlacklisting   = "Expected no error blacklisting token, got %v"
+
+	// Common suffix strings
+	suffixRegisterSession            = " - register session"
+	suffixLoginSession               = " - login session"
+	suffixDuringRegisterSave         = " during register session save"
+	suffixDuringLoginSave            = " during login session save"
+	suffixDuringSessionDeletion      = " during session deletion"
+	suffixDuringRegisterRetrieval    = " during register session retrieval"
+	suffixDuringCredentialsRetrieval = " during credentials retrieval"
+
+	// Session save prefixes
+	prefixSaveRegisterSession = "save register session with "
+	prefixSaveLoginSession    = "save login session with "
+
+	// Common session data descriptions
+	descNilData     = "nil data"
+	descComplexData = "complex data"
+	descAdminUser   = "admin user"
 )
 
 // Database column slice for reuse
@@ -736,7 +770,7 @@ func TestSaveUser_ConcurrentUsernameConflict(t *testing.T) {
 		}
 
 		if err := mockDB.ExpectationsWereMet(); err != nil {
-			t.Errorf("Unmet expectations: %v", err)
+			t.Errorf(msgUnmetExpectations, err)
 		}
 	})
 }
@@ -750,14 +784,14 @@ func checkTestError(t *testing.T, expectedError, actualError error) {
 		}
 	} else {
 		if actualError != nil {
-			t.Errorf("Expected no error, got %v", actualError)
+			t.Errorf(msgExpectedNoError, actualError)
 		}
 	}
 }
 
 func checkMockExpectations(t *testing.T, mockDB pgxmock.PgxPoolIface) {
 	if err := mockDB.ExpectationsWereMet(); err != nil {
-		t.Errorf("Unmet expectations: %v", err)
+		t.Errorf(msgUnmetExpectations, err)
 	}
 }
 
@@ -823,7 +857,7 @@ func runGetUserTests(t *testing.T, tests []getUserTestCase) {
 func TestSaveRegisterSession(t *testing.T) {
 	tests := []saveSessionTestCase{
 		{
-			name:        descSessionSave + " - register session",
+			name:        descSessionSave + suffixRegisterSession,
 			user:        createTestWebAuthnUser(testUsername),
 			sessionData: createTestSessionData(),
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -832,12 +866,12 @@ func TestSaveRegisterSession(t *testing.T) {
 			expectedError: nil,
 			validateResponse: func(t *testing.T, sessionID uuid.UUID, err error) {
 				if sessionID == uuid.Nil {
-					t.Error("Expected non-nil session ID")
+					t.Error(msgExpectedNonNilSessionID)
 				}
 			},
 		},
 		{
-			name:        descDatabaseError + " during register session save",
+			name:        descDatabaseError + suffixDuringRegisterSave,
 			user:        createTestWebAuthnUser(testUsername),
 			sessionData: createTestSessionData(),
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -846,7 +880,7 @@ func TestSaveRegisterSession(t *testing.T) {
 			expectedError: errors.New(errDatabaseError),
 		},
 		{
-			name:        "save register session with nil data",
+			name:        prefixSaveRegisterSession + descNilData,
 			user:        createTestWebAuthnUser(testUsername),
 			sessionData: nil,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -855,12 +889,12 @@ func TestSaveRegisterSession(t *testing.T) {
 			expectedError: nil,
 			validateResponse: func(t *testing.T, sessionID uuid.UUID, err error) {
 				if sessionID == uuid.Nil {
-					t.Error("Expected non-nil session ID")
+					t.Error(msgExpectedNonNilSessionID)
 				}
 			},
 		},
 		{
-			name: "save register session with complex data",
+			name: prefixSaveRegisterSession + descComplexData,
 			user: createTestWebAuthnUser(testUsername),
 			sessionData: map[string]interface{}{
 				"challenge": "complex-challenge-123",
@@ -882,7 +916,7 @@ func TestSaveRegisterSession(t *testing.T) {
 func TestSaveLoginSession(t *testing.T) {
 	tests := []saveSessionTestCase{
 		{
-			name:        descSessionSave + " - login session",
+			name:        descSessionSave + suffixLoginSession,
 			user:        createTestWebAuthnUser(testUsername),
 			sessionData: createTestSessionData(),
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -891,12 +925,12 @@ func TestSaveLoginSession(t *testing.T) {
 			expectedError: nil,
 			validateResponse: func(t *testing.T, sessionID uuid.UUID, err error) {
 				if sessionID == uuid.Nil {
-					t.Error("Expected non-nil session ID")
+					t.Error(msgExpectedNonNilSessionID)
 				}
 			},
 		},
 		{
-			name:        descDatabaseError + " during login session save",
+			name:        descDatabaseError + suffixDuringLoginSave,
 			user:        createTestWebAuthnUser(testUsername),
 			sessionData: createTestSessionData(),
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -905,7 +939,7 @@ func TestSaveLoginSession(t *testing.T) {
 			expectedError: errors.New(errDatabaseError),
 		},
 		{
-			name: "save login session with admin user",
+			name: prefixSaveLoginSession + descAdminUser,
 			user: models.WebAuthnUser{
 				ID:       uuid.New(),
 				Username: testAdminUsername,
@@ -930,7 +964,7 @@ func TestGetRegisterSession(t *testing.T) {
 
 	tests := []getSessionTestCase{
 		{
-			name:      descSessionRetrieve + " - register session",
+			name:      descSessionRetrieve + suffixRegisterSession,
 			sessionID: sessionID,
 			purpose:   purposeRegistration,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -939,15 +973,15 @@ func TestGetRegisterSession(t *testing.T) {
 			expectedError: nil,
 			validateSession: func(t *testing.T, session db.WebauthnSession) {
 				if session.ID != sessionID {
-					t.Errorf("Expected session ID %v, got %v", sessionID, session.ID)
+					t.Errorf(msgExpectedSessionID, sessionID, session.ID)
 				}
 				if session.Purpose != purposeRegistration {
-					t.Errorf("Expected purpose %s, got %s", purposeRegistration, session.Purpose)
+					t.Errorf(msgExpectedPurpose, purposeRegistration, session.Purpose)
 				}
 			},
 		},
 		{
-			name:      descSessionNotFound + " - register session",
+			name:      descSessionNotFound + suffixRegisterSession,
 			sessionID: sessionID,
 			purpose:   purposeRegistration,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -956,7 +990,7 @@ func TestGetRegisterSession(t *testing.T) {
 			expectedError: customerrors.ErrSessionNotFound,
 		},
 		{
-			name:      "database error during register session retrieval",
+			name:      descDatabaseError + suffixDuringRegisterRetrieval,
 			sessionID: sessionID,
 			purpose:   purposeRegistration,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -979,7 +1013,7 @@ func TestGetLoginSession(t *testing.T) {
 
 	tests := []getSessionTestCase{
 		{
-			name:      descSessionRetrieve + " - login session",
+			name:      descSessionRetrieve + suffixLoginSession,
 			sessionID: sessionID,
 			purpose:   purposeLogin,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -988,15 +1022,15 @@ func TestGetLoginSession(t *testing.T) {
 			expectedError: nil,
 			validateSession: func(t *testing.T, session db.WebauthnSession) {
 				if session.ID != sessionID {
-					t.Errorf("Expected session ID %v, got %v", sessionID, session.ID)
+					t.Errorf(msgExpectedSessionID, sessionID, session.ID)
 				}
 				if session.Purpose != purposeLogin {
-					t.Errorf("Expected purpose %s, got %s", purposeLogin, session.Purpose)
+					t.Errorf(msgExpectedPurpose, purposeLogin, session.Purpose)
 				}
 			},
 		},
 		{
-			name:      descSessionNotFound + " - login session",
+			name:      descSessionNotFound + suffixLoginSession,
 			sessionID: sessionID,
 			purpose:   purposeLogin,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -1022,7 +1056,7 @@ func TestDeleteSession(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:      descDatabaseError + " during session deletion",
+			name:      descDatabaseError + suffixDuringSessionDeletion,
 			sessionID: sessionID,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
 				expectDeleteSessionError(mockDB, sessionID, errDatabaseError)
@@ -1052,7 +1086,7 @@ func TestSessionIntegrationFlow(t *testing.T) {
 		expectCreateSessionSuccess(mockDB)
 		sessionID, err := repo.SaveRegisterSession(context.Background(), user, sessionData)
 		if err != nil {
-			t.Errorf("Expected no error saving session, got %v", err)
+			t.Errorf(msgExpectedNoErrorSaving, err)
 		}
 
 		// Retrieve register session
@@ -1062,22 +1096,22 @@ func TestSessionIntegrationFlow(t *testing.T) {
 
 		retrievedSession, err := repo.GetRegisterSession(context.Background(), sessionID)
 		if err != nil {
-			t.Errorf("Expected no error retrieving session, got %v", err)
+			t.Errorf(msgExpectedNoErrorRetrieving, err)
 		}
 
 		if retrievedSession.ID != sessionID {
-			t.Errorf("Expected session ID %v, got %v", sessionID, retrievedSession.ID)
+			t.Errorf(msgExpectedSessionID, sessionID, retrievedSession.ID)
 		}
 
 		// Delete session
 		expectDeleteSessionSuccess(mockDB, sessionID)
 		err = repo.DeleteSession(context.Background(), sessionID)
 		if err != nil {
-			t.Errorf("Expected no error deleting session, got %v", err)
+			t.Errorf(msgExpectedNoErrorDeleting, err)
 		}
 
 		if err := mockDB.ExpectationsWereMet(); err != nil {
-			t.Errorf("Unmet expectations: %v", err)
+			t.Errorf(msgUnmetExpectations, err)
 		}
 	})
 
@@ -1090,7 +1124,7 @@ func TestSessionIntegrationFlow(t *testing.T) {
 		expectCreateSessionSuccess(mockDB)
 		sessionID, err := repo.SaveLoginSession(context.Background(), user, sessionData)
 		if err != nil {
-			t.Errorf("Expected no error saving session, got %v", err)
+			t.Errorf(msgExpectedNoErrorSaving, err)
 		}
 
 		// Retrieve login session
@@ -1100,22 +1134,22 @@ func TestSessionIntegrationFlow(t *testing.T) {
 
 		retrievedSession, err := repo.GetLoginSession(context.Background(), sessionID)
 		if err != nil {
-			t.Errorf("Expected no error retrieving session, got %v", err)
+			t.Errorf(msgExpectedNoErrorRetrieving, err)
 		}
 
 		if retrievedSession.Purpose != purposeLogin {
-			t.Errorf("Expected purpose %s, got %s", purposeLogin, retrievedSession.Purpose)
+			t.Errorf(msgExpectedPurpose, purposeLogin, retrievedSession.Purpose)
 		}
 
 		// Delete session
 		expectDeleteSessionSuccess(mockDB, sessionID)
 		err = repo.DeleteSession(context.Background(), sessionID)
 		if err != nil {
-			t.Errorf("Expected no error deleting session, got %v", err)
+			t.Errorf(msgExpectedNoErrorDeleting, err)
 		}
 
 		if err := mockDB.ExpectationsWereMet(); err != nil {
-			t.Errorf("Unmet expectations: %v", err)
+			t.Errorf(msgUnmetExpectations, err)
 		}
 	})
 }
@@ -1142,7 +1176,7 @@ func runSaveSessionTests(t *testing.T, tests []saveSessionTestCase, sessionType 
 				}
 			} else {
 				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
+					t.Errorf(msgExpectedNoError, err)
 				}
 				if tt.validateResponse != nil {
 					tt.validateResponse(t, sessionID, err)
@@ -1264,7 +1298,7 @@ func TestGetCredentialsByUserID(t *testing.T) {
 			},
 		},
 		{
-			name:   "database error during credentials retrieval",
+			name:   descDatabaseError + suffixDuringCredentialsRetrieval,
 			userID: userID,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
 				expectGetCredentialsByUserIDError(mockDB, userID, errDatabaseError)
@@ -1349,7 +1383,7 @@ func TestCredentialIntegrationFlow(t *testing.T) {
 		expectCreateCredentialSuccess(mockDB)
 		err := repo.SaveCredentials(context.Background(), userID, credential)
 		if err != nil {
-			t.Errorf("Expected no error saving credential, got %v", err)
+			t.Errorf(msgExpectedNoErrorSavingCred, err)
 		}
 
 		// Get credentials
@@ -1358,7 +1392,7 @@ func TestCredentialIntegrationFlow(t *testing.T) {
 
 		retrievedCredentials, err := repo.GetCredentialsByUserID(context.Background(), userID)
 		if err != nil {
-			t.Errorf("Expected no error retrieving credentials, got %v", err)
+			t.Errorf(msgExpectedNoErrorRetrievingCred, err)
 		}
 
 		if len(retrievedCredentials) != 1 {
@@ -1371,11 +1405,11 @@ func TestCredentialIntegrationFlow(t *testing.T) {
 
 		err = repo.UpdateCredentials(context.Background(), credential)
 		if err != nil {
-			t.Errorf("Expected no error updating credential, got %v", err)
+			t.Errorf(msgExpectedNoErrorUpdating, err)
 		}
 
 		if err := mockDB.ExpectationsWereMet(); err != nil {
-			t.Errorf("Unmet expectations: %v", err)
+			t.Errorf(msgUnmetExpectations, err)
 		}
 	})
 }
@@ -1653,7 +1687,7 @@ func TestTokenBlacklistIntegrationFlow(t *testing.T) {
 		// Check token is not blacklisted initially
 		isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), token)
 		if err != nil {
-			t.Errorf("Expected no error checking token, got %v", err)
+			t.Errorf(msgExpectedNoErrorChecking, err)
 		}
 		if isBlacklisted {
 			t.Error("Expected token to not be blacklisted initially")
@@ -1662,13 +1696,13 @@ func TestTokenBlacklistIntegrationFlow(t *testing.T) {
 		// Blacklist the token
 		err = repo.BlacklistToken(context.Background(), token, expiration)
 		if err != nil {
-			t.Errorf("Expected no error blacklisting token, got %v", err)
+			t.Errorf(msgExpectedNoErrorBlacklisting, err)
 		}
 
 		// Check token is now blacklisted
 		isBlacklisted, err = repo.IsTokenBlacklisted(context.Background(), token)
 		if err != nil {
-			t.Errorf("Expected no error checking blacklisted token, got %v", err)
+			t.Errorf(msgExpectedNoErrorChecking, err)
 		}
 		if !isBlacklisted {
 			t.Error("Expected token to be blacklisted")
@@ -1693,7 +1727,7 @@ func TestTokenBlacklistIntegrationFlow(t *testing.T) {
 		// Verify token is initially blacklisted
 		isBlacklisted, err := repo.IsTokenBlacklisted(context.Background(), token)
 		if err != nil {
-			t.Errorf("Expected no error checking token, got %v", err)
+			t.Errorf(msgExpectedNoErrorChecking, err)
 		}
 		if !isBlacklisted {
 			t.Error("Expected token to be blacklisted initially")
@@ -1705,7 +1739,7 @@ func TestTokenBlacklistIntegrationFlow(t *testing.T) {
 		// Check that expired token is no longer blacklisted
 		isBlacklisted, err = repo.IsTokenBlacklisted(context.Background(), token)
 		if err != nil {
-			t.Errorf("Expected no error checking expired token, got %v", err)
+			t.Errorf(msgExpectedNoErrorChecking, err)
 		}
 		if isBlacklisted {
 			t.Error("Expected expired token to not be blacklisted")
@@ -2010,7 +2044,7 @@ func TestUserRepository_IntegrationFlow(t *testing.T) {
 
 		createdUser, err := repo.SaveUser(context.Background(), username, "")
 		if err != nil {
-			t.Errorf("Expected no error creating user, got %v", err)
+			t.Errorf(msgExpectedNoErrorCreating, err)
 		}
 
 		// Step 3: Retrieve the created user
@@ -2018,7 +2052,7 @@ func TestUserRepository_IntegrationFlow(t *testing.T) {
 
 		retrievedUser, err := repo.GetUserByUsername(context.Background(), username)
 		if err != nil {
-			t.Errorf("Expected no error retrieving user, got %v", err)
+			t.Errorf(msgExpectedNoErrorRetrieving, err)
 		}
 
 		if retrievedUser.Username != createdUser.Username {
