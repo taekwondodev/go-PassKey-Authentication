@@ -742,6 +742,48 @@ func TestSaveUser_ConcurrentUsernameConflict(t *testing.T) {
 }
 
 // Test runners
+// Generic helper functions to eliminate duplication
+func checkTestError(t *testing.T, expectedError, actualError error) {
+	if expectedError != nil {
+		if actualError != expectedError {
+			t.Errorf("Expected error %v, got %v", expectedError, actualError)
+		}
+	} else {
+		if actualError != nil {
+			t.Errorf("Expected no error, got %v", actualError)
+		}
+	}
+}
+
+func checkMockExpectations(t *testing.T, mockDB pgxmock.PgxPoolIface) {
+	if err := mockDB.ExpectationsWereMet(); err != nil {
+		t.Errorf("Unmet expectations: %v", err)
+	}
+}
+
+// Additional helper function for simple test operations
+func runSimpleTests(t *testing.T, testName string, testFunc func() error, expectedError error) {
+	t.Run(testName, func(t *testing.T) {
+		err := testFunc()
+		checkTestError(t, expectedError, err)
+	})
+}
+
+// Benchmark helper functions
+func setupBenchmarkRepo(b *testing.B) (pgxmock.PgxPoolIface, UserRepository) {
+	return setupRepoWithoutRedis(&testing.T{})
+}
+
+func runBenchmarkOperation(b *testing.B, setupFunc func(int), operation func()) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		setupFunc(i)
+		b.StartTimer()
+		operation()
+	}
+}
+
 func runSaveUserTests(t *testing.T, tests []saveUserTestCase) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -750,22 +792,12 @@ func runSaveUserTests(t *testing.T, tests []saveUserTestCase) {
 
 			user, err := repo.SaveUser(context.Background(), tt.username, tt.role)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-				if tt.validateUser != nil {
-					tt.validateUser(t, user)
-				}
+			checkTestError(t, tt.expectedError, err)
+			if err == nil && tt.validateUser != nil {
+				tt.validateUser(t, user)
 			}
 
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -778,22 +810,12 @@ func runGetUserTests(t *testing.T, tests []getUserTestCase) {
 
 			user, err := repo.GetUserByUsername(context.Background(), tt.username)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-				if tt.validateUser != nil {
-					tt.validateUser(t, user)
-				}
+			checkTestError(t, tt.expectedError, err)
+			if err == nil && tt.validateUser != nil {
+				tt.validateUser(t, user)
 			}
 
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -1127,9 +1149,7 @@ func runSaveSessionTests(t *testing.T, tests []saveSessionTestCase, sessionType 
 				}
 			}
 
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -1369,19 +1389,8 @@ func runSaveCredentialTests(t *testing.T, tests []saveCredentialTestCase) {
 
 			err := repo.SaveCredentials(context.Background(), tt.userID, tt.credential)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-			}
-
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkTestError(t, tt.expectedError, err)
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -1394,22 +1403,12 @@ func runGetCredentialsTests(t *testing.T, tests []getCredentialsTestCase) {
 
 			credentials, err := repo.GetCredentialsByUserID(context.Background(), tt.userID)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-				if tt.validateCredentials != nil {
-					tt.validateCredentials(t, credentials)
-				}
+			checkTestError(t, tt.expectedError, err)
+			if err == nil && tt.validateCredentials != nil {
+				tt.validateCredentials(t, credentials)
 			}
 
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -1422,19 +1421,8 @@ func runUpdateCredentialTests(t *testing.T, tests []updateCredentialTestCase) {
 
 			err := repo.UpdateCredentials(context.Background(), tt.credential)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-			}
-
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkTestError(t, tt.expectedError, err)
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -1454,22 +1442,12 @@ func runGetSessionTests(t *testing.T, tests []getSessionTestCase, sessionType st
 				session, err = repo.GetLoginSession(context.Background(), tt.sessionID)
 			}
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-				if tt.validateSession != nil {
-					tt.validateSession(t, session)
-				}
+			checkTestError(t, tt.expectedError, err)
+			if err == nil && tt.validateSession != nil {
+				tt.validateSession(t, session)
 			}
 
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -1482,19 +1460,8 @@ func runDeleteSessionTests(t *testing.T, tests []deleteSessionTestCase) {
 
 			err := repo.DeleteSession(context.Background(), tt.sessionID)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-			}
-
-			if err := mockDB.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unmet expectations: %v", err)
-			}
+			checkTestError(t, tt.expectedError, err)
+			checkMockExpectations(t, mockDB)
 		})
 	}
 }
@@ -1502,13 +1469,12 @@ func runDeleteSessionTests(t *testing.T, tests []deleteSessionTestCase) {
 // Benchmark tests for token operations
 func BenchmarkBlacklistToken(b *testing.B) {
 	_, _, repo := setupMockRepo(&testing.T{})
+	token := testToken
 	expiration := time.Now().Add(1 * time.Hour)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		token := fmt.Sprintf("benchmark-token-%d", i)
-		repo.BlacklistToken(context.Background(), token, expiration)
-	}
+	runBenchmarkOperation(b,
+		func(i int) {}, // No setup needed
+		func() { repo.BlacklistToken(context.Background(), token, expiration) })
 }
 
 func BenchmarkIsTokenBlacklisted(b *testing.B) {
@@ -1516,28 +1482,23 @@ func BenchmarkIsTokenBlacklisted(b *testing.B) {
 	token := testToken
 	expiration := time.Now().Add(1 * time.Hour)
 
-	// Pre-blacklist a token
+	// Blacklist the token first
 	repo.BlacklistToken(context.Background(), token, expiration)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		repo.IsTokenBlacklisted(context.Background(), token)
-	}
+	runBenchmarkOperation(b,
+		func(i int) {}, // No setup needed
+		func() { repo.IsTokenBlacklisted(context.Background(), token) })
 }
 
 // Benchmark tests for credential operations
 func BenchmarkSaveCredentials(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 	userID := uuid.New()
+	credential := createTestCredential(userID)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		credential := createTestCredential(userID)
-		expectCreateCredentialSuccess(mockDB)
-		b.StartTimer()
-		repo.SaveCredentials(context.Background(), userID, credential)
-	}
+	runBenchmarkOperation(b,
+		func(i int) { expectCreateCredentialSuccess(mockDB) },
+		func() { repo.SaveCredentials(context.Background(), userID, credential) })
 }
 
 func TestBlacklistToken(t *testing.T) {
@@ -1889,15 +1850,7 @@ func runBlacklistTokenTests(t *testing.T, tests []blacklistTokenTestCase) {
 
 			err := repo.BlacklistToken(context.Background(), tt.token, tt.expiration)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-			}
+			checkTestError(t, tt.expectedError, err)
 		})
 	}
 }
@@ -1928,148 +1881,110 @@ func runIsTokenBlacklistedTests(t *testing.T, tests []isTokenBlacklistedTestCase
 
 			result, err := repo.IsTokenBlacklisted(context.Background(), tt.token)
 
-			if tt.expectedError != nil {
-				if err != tt.expectedError {
-					t.Errorf("Expected error %v, got %v", tt.expectedError, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-				if result != tt.expectedResult {
-					t.Errorf("Expected result %v, got %v", tt.expectedResult, result)
-				}
+			checkTestError(t, tt.expectedError, err)
+			if err == nil && result != tt.expectedResult {
+				t.Errorf("Expected result %v, got %v", tt.expectedResult, result)
 			}
 		})
 	}
 }
 
 func BenchmarkGetCredentialsByUserID(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 	userID := uuid.New()
 	credentials := []db.Credential{createTestDBCredential(userID)}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		expectGetCredentialsByUserIDSuccess(mockDB, userID, credentials)
-		b.StartTimer()
-		repo.GetCredentialsByUserID(context.Background(), userID)
-	}
+	runBenchmarkOperation(b,
+		func(i int) { expectGetCredentialsByUserIDSuccess(mockDB, userID, credentials) },
+		func() { repo.GetCredentialsByUserID(context.Background(), userID) })
 }
 
 func BenchmarkUpdateCredentials(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
+	credential := createTestCredential(uuid.New())
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		credential := createTestCredential(uuid.New())
-		expectUpdateCredentialSuccess(mockDB, string(credential.ID), int64(credential.Authenticator.SignCount))
-		b.StartTimer()
-		repo.UpdateCredentials(context.Background(), credential)
-	}
+	runBenchmarkOperation(b,
+		func(i int) {
+			expectUpdateCredentialSuccess(mockDB, string(credential.ID), int64(credential.Authenticator.SignCount))
+		},
+		func() { repo.UpdateCredentials(context.Background(), credential) })
 }
 
 // Benchmark tests for session operations
 func BenchmarkSaveRegisterSession(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 	user := createTestWebAuthnUser(testUsername)
 	sessionData := createTestSessionData()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		expectCreateSessionSuccess(mockDB)
-		b.StartTimer()
-		repo.SaveRegisterSession(context.Background(), user, sessionData)
-	}
+	runBenchmarkOperation(b,
+		func(i int) { expectCreateSessionSuccess(mockDB) },
+		func() { repo.SaveRegisterSession(context.Background(), user, sessionData) })
 }
 
 func BenchmarkSaveLoginSession(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 	user := createTestWebAuthnUser(testUsername)
 	sessionData := createTestSessionData()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		expectCreateSessionSuccess(mockDB)
-		b.StartTimer()
-		repo.SaveLoginSession(context.Background(), user, sessionData)
-	}
+	runBenchmarkOperation(b,
+		func(i int) { expectCreateSessionSuccess(mockDB) },
+		func() { repo.SaveLoginSession(context.Background(), user, sessionData) })
 }
 
 func BenchmarkGetRegisterSession(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 	sessionID := uuid.New()
 	userID := uuid.New()
 	testSession := createTestSession(userID, purposeRegistration)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		expectGetSessionSuccess(mockDB, sessionID, purposeRegistration, testSession)
-		b.StartTimer()
-		repo.GetRegisterSession(context.Background(), sessionID)
-	}
+	runBenchmarkOperation(b,
+		func(i int) { expectGetSessionSuccess(mockDB, sessionID, purposeRegistration, testSession) },
+		func() { repo.GetRegisterSession(context.Background(), sessionID) })
 }
 
 func BenchmarkGetLoginSession(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 	sessionID := uuid.New()
 	userID := uuid.New()
 	testSession := createTestSession(userID, purposeLogin)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		expectGetSessionSuccess(mockDB, sessionID, purposeLogin, testSession)
-		b.StartTimer()
-		repo.GetLoginSession(context.Background(), sessionID)
-	}
+	runBenchmarkOperation(b,
+		func(i int) { expectGetSessionSuccess(mockDB, sessionID, purposeLogin, testSession) },
+		func() { repo.GetLoginSession(context.Background(), sessionID) })
 }
 
 func BenchmarkDeleteSession(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
+	sessionID := uuid.New()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		sessionID := uuid.New()
-		expectDeleteSessionSuccess(mockDB, sessionID)
-		b.StartTimer()
-		repo.DeleteSession(context.Background(), sessionID)
-	}
+	runBenchmarkOperation(b,
+		func(i int) { expectDeleteSessionSuccess(mockDB, sessionID) },
+		func() { repo.DeleteSession(context.Background(), sessionID) })
 }
 
 // Benchmark tests for performance
 func BenchmarkSaveUser(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		username := fmt.Sprintf("user%d", i)
-
 		expectUserNotFound(mockDB, username)
 		expectCreateUser(mockDB, username)
-
 		b.StartTimer()
 		repo.SaveUser(context.Background(), username, "")
 	}
 }
 
 func BenchmarkGetUserByUsername(b *testing.B) {
-	mockDB, repo := setupRepoWithoutRedis(&testing.T{})
+	mockDB, repo := setupBenchmarkRepo(b)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		username := fmt.Sprintf("user%d", i)
-
 		expectUserFound(mockDB, username, roleUser, true)
-
 		b.StartTimer()
 		repo.GetUserByUsername(context.Background(), username)
 	}
@@ -2118,9 +2033,7 @@ func TestUserRepository_IntegrationFlow(t *testing.T) {
 			t.Errorf("Expected ErrUsernameAlreadyExists, got %v", err)
 		}
 
-		if err := mockDB.ExpectationsWereMet(); err != nil {
-			t.Errorf("Unmet expectations: %v", err)
-		}
+		checkMockExpectations(t, mockDB)
 	})
 }
 
@@ -2146,8 +2059,6 @@ func TestUserRepository_StressTest(t *testing.T) {
 			}
 		}
 
-		if err := mockDB.ExpectationsWereMet(); err != nil {
-			t.Errorf("Unmet expectations: %v", err)
-		}
+		checkMockExpectations(t, mockDB)
 	})
 }
