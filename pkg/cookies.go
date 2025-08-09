@@ -2,9 +2,9 @@ package pkg
 
 import (
 	"net/http"
-	"os"
-	"strings"
 	"time"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/config"
 )
 
 const RefreshTokenCookieName = "refresh_token"
@@ -29,30 +29,25 @@ type CookieToken struct {
 	refreshTokenCookieName string
 }
 
-func NewCookieHelper() CookieHelper {
-	origin := os.Getenv("ORIGIN")
+func NewCookieHelper() (CookieHelper, error) {
+	originConfig, err := config.LoadOriginConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	config := &CookieConfig{
-		Secure:   false,                 // HTTP in development
-		SameSite: http.SameSiteNoneMode, // Required for cross-origin cookies
-		Domain:   "",                    // Empty for localhost
+		Secure:   originConfig.IsHTTPS,             // HTTP in development
+		SameSite: originConfig.GetCookieSameSite(), // Required for cross-origin cookies
+		Domain:   originConfig.Domain,              // Empty for localhost
 		Path:     "/",
 		HttpOnly: true,
 		MaxAge:   86400,
 	}
 
-	if strings.HasPrefix(origin, "https://") {
-		config.Secure = true                      // Set to true in production with HTTPS
-		config.SameSite = http.SameSiteStrictMode // Use strict mode for production
-		config.Domain = strings.TrimPrefix(origin, "https://")
-	} else if strings.Contains(origin, "localhost") {
-		config.SameSite = http.SameSiteLaxMode // Use lax mode for localhost
-	}
-
 	return &CookieToken{
 		Configs:                config,
 		refreshTokenCookieName: RefreshTokenCookieName,
-	}
+	}, nil
 }
 
 func (c *CookieToken) SetRefreshTokenCookie(w http.ResponseWriter, token string) {

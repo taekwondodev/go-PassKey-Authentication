@@ -2,14 +2,15 @@ package middleware
 
 import (
 	"net/http"
-	"os"
+
+	"github.com/taekwondodev/go-PassKey-Authentication/internal/config"
 )
+
+var originConfig, _ = config.LoadOriginConfig()
 
 func CorsMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		origin := os.Getenv("ORIGIN")
-
-		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Origin", originConfig.URL)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")

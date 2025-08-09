@@ -20,7 +20,7 @@ func main() {
 
 	webauthn := Must(config.InitWebAuthn())
 	jwt := Must(pkg.NewJWT())
-	cookie := pkg.NewCookieHelper()
+	cookie := Must(pkg.NewCookieHelper())
 	authRepo := repository.New(queries, redis)
 	authService := service.New(authRepo, jwt, webauthn)
 	authController := controller.New(authService, cookie)

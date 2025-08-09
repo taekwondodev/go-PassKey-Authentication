@@ -19,11 +19,15 @@ import (
 
 // Test constants
 const (
-	testUsername  = "testuser"
-	testAdminUser = "admin"
-	userRole      = "user"
-	adminRole     = "admin"
-	emptyString   = ""
+	testUsername      = "testuser"
+	testAdminUser     = "admin"
+	userRole          = "user"
+	adminRole         = "admin"
+	emptyString       = ""
+	webAuthnUserType  = "models.WebAuthnUser"
+	uuidType          = "uuid.UUID"
+	emptyUsernameDesc = "empty username"
+	userNotFoundDesc  = "user not found"
 )
 
 // Test data
@@ -185,10 +189,10 @@ func (ms *beginMockSetup) apply(mockRepo *mockAuthRepository) {
 	}
 
 	if ms.saveSessionSuccess {
-		mockRepo.On("SaveRegisterSession", mock.Anything, mock.AnythingOfType("models.WebAuthnUser"), mock.Anything).Return(uuid.New(), nil)
+		mockRepo.On("SaveRegisterSession", mock.Anything, mock.AnythingOfType(webAuthnUserType), mock.Anything).Return(uuid.New(), nil)
 	} else if ms.saveUserSuccess {
 		// Only mock failed session save if user save was successful (otherwise session save won't be called)
-		mockRepo.On("SaveRegisterSession", mock.Anything, mock.AnythingOfType("models.WebAuthnUser"), mock.Anything).Return(uuid.Nil, assert.AnError)
+		mockRepo.On("SaveRegisterSession", mock.Anything, mock.AnythingOfType(webAuthnUserType), mock.Anything).Return(uuid.Nil, assert.AnError)
 	}
 }
 
@@ -232,12 +236,12 @@ func (ms *beginLoginMockSetup) apply(mockRepo *mockAuthRepository) {
 			mockRepo.On("GetCredentialsByUserID", mock.Anything, testUser.ID).Return(credentials, nil)
 
 			if ms.saveSessionSuccess {
-				mockRepo.On("SaveLoginSession", mock.Anything, mock.AnythingOfType("models.WebAuthnUser"), mock.Anything).Return(uuid.New(), nil)
+				mockRepo.On("SaveLoginSession", mock.Anything, mock.AnythingOfType(webAuthnUserType), mock.Anything).Return(uuid.New(), nil)
 			} else {
-				mockRepo.On("SaveLoginSession", mock.Anything, mock.AnythingOfType("models.WebAuthnUser"), mock.Anything).Return(uuid.Nil, assert.AnError)
+				mockRepo.On("SaveLoginSession", mock.Anything, mock.AnythingOfType(webAuthnUserType), mock.Anything).Return(uuid.Nil, assert.AnError)
 			}
 		} else {
-			mockRepo.On("GetCredentialsByUserID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(nil, assert.AnError)
+			mockRepo.On("GetCredentialsByUserID", mock.Anything, mock.AnythingOfType(uuidType)).Return(nil, assert.AnError)
 		}
 	} else {
 		mockRepo.On("GetUserByUsername", mock.Anything, ms.username).Return(nil, assert.AnError)
@@ -268,9 +272,9 @@ func (ms *finishLoginMockSetup) apply(mockRepo *mockAuthRepository) {
 
 				if ms.getSessionSuccess {
 					session := createTestSession(testUser.ID, ms.sessionData)
-					mockRepo.On("GetLoginSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(session, nil)
+					mockRepo.On("GetLoginSession", mock.Anything, mock.AnythingOfType(uuidType)).Return(session, nil)
 				} else {
-					mockRepo.On("GetLoginSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(nil, assert.AnError)
+					mockRepo.On("GetLoginSession", mock.Anything, mock.AnythingOfType(uuidType)).Return(nil, assert.AnError)
 				}
 			} else {
 				mockRepo.On("GetCredentialsByUserID", mock.Anything, testUser.ID).Return(nil, assert.AnError)
@@ -290,9 +294,9 @@ func (ms *finishMockSetup) apply(mockRepo *mockAuthRepository) {
 
 			if ms.getSessionSuccess {
 				session := createTestSession(testUser.ID, ms.sessionData)
-				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(session, nil)
+				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType(uuidType)).Return(session, nil)
 			} else {
-				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(nil, assert.AnError)
+				mockRepo.On("GetRegisterSession", mock.Anything, mock.AnythingOfType(uuidType)).Return(nil, assert.AnError)
 			}
 		} else {
 			mockRepo.On("GetUserByUsername", mock.Anything, ms.username).Return(nil, assert.AnError)
@@ -473,7 +477,7 @@ func TestBeginRegister(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:     "empty username",
+			name:     emptyUsernameDesc,
 			username: emptyString,
 			role:     userRole,
 			mockSetup: beginMockSetup{
@@ -516,7 +520,7 @@ func TestFinishRegister(t *testing.T) {
 			expectedError: true,
 		},
 		{
-			name: "user not found",
+			name: userNotFoundDesc,
 			request: &dto.FinishRequest{
 				Username:    "nonexistent",
 				SessionID:   validSessionID,
@@ -563,7 +567,7 @@ func TestFinishRegister(t *testing.T) {
 			expectedError: true,
 		},
 		{
-			name: "empty username",
+			name: emptyUsernameDesc,
 			request: &dto.FinishRequest{
 				Username:    emptyString,
 				SessionID:   validSessionID,
@@ -685,7 +689,7 @@ func TestBeginLogin(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:     "user not found",
+			name:     userNotFoundDesc,
 			username: "nonexistent",
 			mockSetup: beginLoginMockSetup{
 				getUserSuccess: false,
@@ -729,7 +733,7 @@ func TestBeginLogin(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:     "empty username",
+			name:     emptyUsernameDesc,
 			username: emptyString,
 			mockSetup: beginLoginMockSetup{
 				getUserSuccess: false,
@@ -759,7 +763,7 @@ func TestFinishLogin(t *testing.T) {
 			expectedError: true,
 		},
 		{
-			name: "user not found",
+			name: userNotFoundDesc,
 			request: &dto.FinishRequest{
 				Username:    "nonexistent",
 				SessionID:   validSessionID,
@@ -824,7 +828,7 @@ func TestFinishLogin(t *testing.T) {
 			expectedError: true,
 		},
 		{
-			name: "empty username",
+			name: emptyUsernameDesc,
 			request: &dto.FinishRequest{
 				Username:    emptyString,
 				SessionID:   validSessionID,
