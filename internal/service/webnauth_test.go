@@ -28,6 +28,7 @@ const (
 	uuidType          = "uuid.UUID"
 	emptyUsernameDesc = "empty username"
 	userNotFoundDesc  = "user not found"
+	timeType          = "time.Time"
 )
 
 // Test data
@@ -169,6 +170,51 @@ func createTestSession(userID uuid.UUID, data []byte) db.WebauthnSession {
 		UserID:    userID,
 		Data:      data,
 		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+	}
+}
+
+func createTestClaims(username, role string, userID uuid.UUID) *pkg.Claims {
+	return &pkg.Claims{
+		Username: username,
+		Role:     role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+	}
+}
+
+type refreshTestCase struct {
+	name          string
+	token         string
+	setupMock     func(*mockAuthRepository, *mockToken, *pkg.Claims, db.User)
+	expectedError bool
+}
+
+func runRefreshTests(t *testing.T, testCases []refreshTestCase, testUser db.User) {
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockRepo, mockToken, authService := setupService(t)
+			claims := createTestClaims(testUsername, userRole, testUser.ID)
+			tc.setupMock(mockRepo, mockToken, claims, testUser)
+
+			result, refreshToken, err := authService.Refresh(context.Background(), tc.token)
+
+			if tc.expectedError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+				assert.Empty(t, refreshToken)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.NotEmpty(t, result.AccessToken)
+				assert.NotEmpty(t, refreshToken)
+				assert.Equal(t, "Update token successfully!", result.Message)
+			}
+
+			mockRepo.AssertExpectations(t)
+			mockToken.AssertExpectations(t)
+		})
 	}
 }
 
@@ -944,35 +990,22 @@ func TestRefresh(t *testing.T) {
 	blacklistedToken := "blacklisted.token"
 	testUser := createTestUser(testUsername, userRole)
 
-	testCases := []struct {
-		name          string
-		token         string
-		setupMock     func(*mockAuthRepository, *mockToken)
-		expectedError bool
-	}{
+	testCases := []refreshTestCase{
 		{
 			name:  "valid token refresh success",
 			token: validToken,
-			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken) {
-				claims := &pkg.Claims{
-					Username: testUsername,
-					Role:     userRole,
-					RegisteredClaims: jwt.RegisteredClaims{
-						Subject:   testUser.ID.String(),
-						ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-					},
-				}
+			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken, claims *pkg.Claims, testUser db.User) {
 				mockToken.On("ValidateJWT", validToken).Return(claims, nil)
 				mockRepo.On("IsTokenBlacklisted", mock.Anything, validToken).Return(false, nil)
 				mockToken.On("GenerateJWT", testUsername, userRole, testUser.ID).Return("new.access.token", "new.refresh.token", nil)
-				mockRepo.On("BlacklistToken", mock.Anything, validToken, mock.AnythingOfType("time.Time")).Return(nil)
+				mockRepo.On("BlacklistToken", mock.Anything, validToken, mock.AnythingOfType(timeType)).Return(nil)
 			},
 			expectedError: false,
 		},
 		{
 			name:  "invalid token",
 			token: invalidToken,
-			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken) {
+			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken, claims *pkg.Claims, testUser db.User) {
 				mockToken.On("ValidateJWT", invalidToken).Return(nil, assert.AnError)
 			},
 			expectedError: true,
@@ -980,15 +1013,7 @@ func TestRefresh(t *testing.T) {
 		{
 			name:  "blacklisted token",
 			token: blacklistedToken,
-			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken) {
-				claims := &pkg.Claims{
-					Username: testUsername,
-					Role:     userRole,
-					RegisteredClaims: jwt.RegisteredClaims{
-						Subject:   testUser.ID.String(),
-						ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-					},
-				}
+			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken, claims *pkg.Claims, testUser db.User) {
 				mockToken.On("ValidateJWT", blacklistedToken).Return(claims, nil)
 				mockRepo.On("IsTokenBlacklisted", mock.Anything, blacklistedToken).Return(true, nil)
 			},
@@ -997,15 +1022,7 @@ func TestRefresh(t *testing.T) {
 		{
 			name:  "blacklist check fails",
 			token: validToken,
-			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken) {
-				claims := &pkg.Claims{
-					Username: testUsername,
-					Role:     userRole,
-					RegisteredClaims: jwt.RegisteredClaims{
-						Subject:   testUser.ID.String(),
-						ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-					},
-				}
+			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken, claims *pkg.Claims, testUser db.User) {
 				mockToken.On("ValidateJWT", validToken).Return(claims, nil)
 				mockRepo.On("IsTokenBlacklisted", mock.Anything, validToken).Return(false, assert.AnError)
 			},
@@ -1014,15 +1031,7 @@ func TestRefresh(t *testing.T) {
 		{
 			name:  "jwt generation fails",
 			token: validToken,
-			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken) {
-				claims := &pkg.Claims{
-					Username: testUsername,
-					Role:     userRole,
-					RegisteredClaims: jwt.RegisteredClaims{
-						Subject:   testUser.ID.String(),
-						ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-					},
-				}
+			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken, claims *pkg.Claims, testUser db.User) {
 				mockToken.On("ValidateJWT", validToken).Return(claims, nil)
 				mockRepo.On("IsTokenBlacklisted", mock.Anything, validToken).Return(false, nil)
 				mockToken.On("GenerateJWT", testUsername, userRole, testUser.ID).Return(emptyString, emptyString, assert.AnError)
@@ -1032,55 +1041,25 @@ func TestRefresh(t *testing.T) {
 		{
 			name:  "blacklist token fails",
 			token: validToken,
-			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken) {
-				claims := &pkg.Claims{
-					Username: testUsername,
-					Role:     userRole,
-					RegisteredClaims: jwt.RegisteredClaims{
-						Subject:   testUser.ID.String(),
-						ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-					},
-				}
+			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken, claims *pkg.Claims, testUser db.User) {
 				mockToken.On("ValidateJWT", validToken).Return(claims, nil)
 				mockRepo.On("IsTokenBlacklisted", mock.Anything, validToken).Return(false, nil)
 				mockToken.On("GenerateJWT", testUsername, userRole, testUser.ID).Return("new.access.token", "new.refresh.token", nil)
-				mockRepo.On("BlacklistToken", mock.Anything, validToken, mock.AnythingOfType("time.Time")).Return(assert.AnError)
+				mockRepo.On("BlacklistToken", mock.Anything, validToken, mock.AnythingOfType(timeType)).Return(assert.AnError)
 			},
 			expectedError: true,
 		},
 		{
 			name:  "empty token",
 			token: emptyString,
-			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken) {
+			setupMock: func(mockRepo *mockAuthRepository, mockToken *mockToken, claims *pkg.Claims, testUser db.User) {
 				mockToken.On("ValidateJWT", emptyString).Return(nil, assert.AnError)
 			},
 			expectedError: true,
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockRepo, mockToken, authService := setupService(t)
-			tc.setupMock(mockRepo, mockToken)
-
-			result, refreshToken, err := authService.Refresh(context.Background(), tc.token)
-
-			if tc.expectedError {
-				assert.Error(t, err)
-				assert.Nil(t, result)
-				assert.Empty(t, refreshToken)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, result)
-				assert.NotEmpty(t, result.AccessToken)
-				assert.NotEmpty(t, refreshToken)
-				assert.Equal(t, "Update token successfully!", result.Message)
-			}
-
-			mockRepo.AssertExpectations(t)
-			mockToken.AssertExpectations(t)
-		})
-	}
+	runRefreshTests(t, testCases, testUser)
 }
 
 func TestLogout(t *testing.T) {
