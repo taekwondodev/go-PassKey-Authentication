@@ -36,3 +36,4 @@ migrations/
 query/
 sqlc.yaml
 docker-bake.hcl
+client/

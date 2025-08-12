@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAuthn Authentication Client</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 WebAuthn Authentication Client</h1>
+            <p>Test your passwordless authentication service</p>
+        </header>
+
+        <div class="status-bar">
+            <div id="connection-status" class="status-item">
+                <span class="status-dot offline"></span>
+                <span>Backend: Disconnected</span>
+            </div>
+            <div id="auth-status" class="status-item">
+                <span class="status-dot"></span>
+                <span>Not authenticated</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('register')">Register</button>
+            <button class="tab-button" onclick="showTab('login')">Login</button>
+            <button class="tab-button" onclick="showTab('tokens')">Tokens</button>
+        </div>
+
+        <!-- Registration Tab -->
+        <div id="register-tab" class="tab-content active">
+            <div class="card">
+                <h2>🆕 Register New User</h2>
+                <form id="register-form">
+                    <div class="input-group">
+                        <label for="register-username">Username:</label>
+                        <input type="text" id="register-username" placeholder="Enter username (min 3 chars)" required minlength="3">
+                    </div>
+                    <div class="input-group">
+                        <label for="register-role">Role (optional):</label>
+                        <select id="register-role">
+                            <option value="">Default (user)</option>
+                            <option value="user">user</option>
+                            <option value="admin">admin</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">🚀 Start Registration</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>📋 Registration Steps</h3>
+                <div class="steps">
+                    <div class="step" id="reg-step-1">
+                        <span class="step-number">1</span>
+                        <span>Request registration challenge</span>
+                        <span class="step-status"></span>
+                    </div>
+                    <div class="step" id="reg-step-2">
+                        <span class="step-number">2</span>
+                        <span>Create credentials with authenticator</span>
+                        <span class="step-status"></span>
+                    </div>
+                    <div class="step" id="reg-step-3">
+                        <span class="step-number">3</span>
+                        <span>Complete registration</span>
+                        <span class="step-status"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Tab -->
+        <div id="login-tab" class="tab-content">
+            <div class="card">
+                <h2>🔑 Login</h2>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="login-username">Username:</label>
+                        <input type="text" id="login-username" placeholder="Enter username" required minlength="3">
+                    </div>
+                    <button type="submit" class="btn btn-primary">🔓 Start Login</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>📋 Login Steps</h3>
+                <div class="steps">
+                    <div class="step" id="login-step-1">
+                        <span class="step-number">1</span>
+                        <span>Request login challenge</span>
+                        <span class="step-status"></span>
+                    </div>
+                    <div class="step" id="login-step-2">
+                        <span class="step-number">2</span>
+                        <span>Authenticate with existing credential</span>
+                        <span class="step-status"></span>
+                    </div>
+                    <div class="step" id="login-step-3">
+                        <span class="step-number">3</span>
+                        <span>Complete login and receive tokens</span>
+                        <span class="step-status"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tokens Tab -->
+        <div id="tokens-tab" class="tab-content">
+            <div class="card">
+                <h2>🎫 Token Management</h2>
+                <div class="token-section">
+                    <h3>Access Token</h3>
+                    <div class="token-display">
+                        <textarea id="access-token" readonly placeholder="No access token available"></textarea>
+                        <div class="token-info">
+                            <span id="access-token-status">Not available</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="token-actions">
+                    <button class="btn btn-secondary" onclick="refreshToken()">🔄 Refresh Token</button>
+                    <button class="btn btn-danger" onclick="logout()">🚪 Logout</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🧪 Test Protected Endpoint</h3>
+                <p>This would test a protected endpoint if implemented in the backend.</p>
+                <button class="btn btn-secondary" onclick="testProtectedEndpoint()" disabled>🛡️ Test Protected Route</button>
+                <div id="protected-result" class="result-box"></div>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="card logs-section">
+            <h3>📝 Activity Logs</h3>
+            <div class="log-controls">
+                <button class="btn btn-small" onclick="clearLogs()">🗑️ Clear Logs</button>
+                <label>
+                    <input type="checkbox" id="auto-scroll" checked> Auto-scroll
+                </label>
+            </div>
+            <div id="logs" class="logs"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -159,6 +160,11 @@ var userColumns = []string{colID, colUsername, colRole, colCreatedAt, colUpdated
 var sessionColumns = []string{colSessionID, colUserID, colData, colPurpose, colSessionCreatedAt, colExpiresAt}
 var credentialColumns = []string{colCredentialID, colCredentialUserID, colPublicKey, colSignCount, colTransports, colAAGUID, colAttestationFormat, colCredentialCreatedAt}
 
+// Helper function to encode credential ID as base64url (matching the repository logic)
+func encodeCredentialID(id []byte) string {
+	return base64.RawURLEncoding.EncodeToString(id)
+}
+
 func setupMockDB(t *testing.T) (pgxmock.PgxPoolIface, *db.Queries) {
 	mockDB, err := pgxmock.NewPool()
 	if err != nil {
@@ -293,7 +299,7 @@ func createTestCredential(userID uuid.UUID) *webauthn.Credential {
 func createTestDBCredential(userID uuid.UUID) db.Credential {
 	aaguid, _ := uuid.Parse(testAAGUID)
 	return db.Credential{
-		ID:                testCredentialID,
+		ID:                encodeCredentialID([]byte(testCredentialID)),
 		UserID:            userID,
 		PublicKey:         []byte(testPublicKeyData),
 		SignCount:         100,
@@ -393,7 +399,7 @@ func expectDeleteSessionError(mockDB pgxmock.PgxPoolIface, sessionID uuid.UUID, 
 // Credential mock helpers
 func expectCreateCredentialSuccess(mockDB pgxmock.PgxPoolIface) {
 	mockDB.ExpectExec(createCredentialQuery).
-		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WithArgs(encodeCredentialID([]byte(testCredentialID)), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 }
 
@@ -418,13 +424,13 @@ func expectGetCredentialsByUserIDError(mockDB pgxmock.PgxPoolIface, userID uuid.
 
 func expectUpdateCredentialSuccess(mockDB pgxmock.PgxPoolIface, credentialID string, signCount int64) {
 	mockDB.ExpectExec(updateCredentialQuery).
-		WithArgs(credentialID, signCount).
+		WithArgs(encodeCredentialID([]byte(credentialID)), signCount).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 }
 
 func expectUpdateCredentialError(mockDB pgxmock.PgxPoolIface, credentialID string, signCount int64, errorMsg string) {
 	mockDB.ExpectExec(updateCredentialQuery).
-		WithArgs(credentialID, signCount).
+		WithArgs(encodeCredentialID([]byte(credentialID)), signCount).
 		WillReturnError(errors.New(errorMsg))
 }
 
@@ -1256,7 +1262,7 @@ func TestGetCredentialsByUserID(t *testing.T) {
 	testCredentials := []db.Credential{
 		createTestDBCredential(userID),
 		{
-			ID:                "credential-2",
+			ID:                encodeCredentialID([]byte("credential-2")),
 			UserID:            userID,
 			PublicKey:         []byte("public-key-2"),
 			SignCount:         200,
@@ -1279,8 +1285,9 @@ func TestGetCredentialsByUserID(t *testing.T) {
 				if len(credentials) != 2 {
 					t.Errorf("Expected 2 credentials, got %d", len(credentials))
 				}
-				if credentials[0].ID != testCredentialID {
-					t.Errorf("Expected credential ID %s, got %s", testCredentialID, credentials[0].ID)
+				expectedID := encodeCredentialID([]byte(testCredentialID))
+				if credentials[0].ID != expectedID {
+					t.Errorf("Expected credential ID %s, got %s", expectedID, credentials[0].ID)
 				}
 			},
 		},

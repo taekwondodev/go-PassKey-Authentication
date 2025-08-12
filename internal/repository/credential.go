@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/base64"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
@@ -16,8 +17,10 @@ func (r *repository) SaveCredentials(ctx context.Context, userID uuid.UUID, cred
 		return customerrors.ErrInvalidAAGUID
 	}
 
+	credentialID := base64.RawURLEncoding.EncodeToString(credential.ID)
+
 	err = r.queries.CreateCredential(ctx, db.CreateCredentialParams{
-		ID:                string(credential.ID),
+		ID:                credentialID,
 		UserID:            userID,
 		PublicKey:         credential.PublicKey,
 		SignCount:         int64(credential.Authenticator.SignCount),
@@ -43,8 +46,10 @@ func (r *repository) GetCredentialsByUserID(ctx context.Context, userID uuid.UUI
 }
 
 func (r *repository) UpdateCredentials(ctx context.Context, credential *webauthn.Credential) error {
+	credentialID := base64.RawURLEncoding.EncodeToString(credential.ID)
+
 	err := r.queries.UpdateCredentialSignCount(ctx, db.UpdateCredentialSignCountParams{
-		ID:        string(credential.ID),
+		ID:        credentialID,
 		SignCount: int64(credential.Authenticator.SignCount),
 	})
 
