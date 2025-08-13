@@ -24,6 +24,8 @@ func (r *repository) SaveCredentials(ctx context.Context, userID uuid.UUID, cred
 		Transports:        transports,
 		Aaguid:            aaguid,
 		AttestationFormat: attestationFormat,
+		BackupEligible:    credential.Flags.BackupEligible,
+		BackupState:       credential.Flags.BackupState,
 	})
 
 	if err != nil {

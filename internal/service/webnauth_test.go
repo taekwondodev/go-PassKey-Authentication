@@ -276,7 +276,10 @@ func (ms *beginLoginMockSetup) apply(mockRepo *mockAuthRepository) {
 				Transports:        []string{"usb", "nfc"},
 				Aaguid:            uuid.New(),
 				AttestationFormat: pgtype.Text{String: "none", Valid: true},
-				CreatedAt:         pgtype.Timestamp{Time: time.Now(), Valid: true},
+				BackupEligible:    false,
+				BackupState:       false,
+				CreatedAt:         pgtype.Timestamptz{Time: time.Now(), Valid: true},
+				LastUsedAt:        pgtype.Timestamptz{Time: time.Now(), Valid: true},
 			}
 			credentials := []db.Credential{testCredential}
 			mockRepo.On("GetCredentialsByUserID", mock.Anything, testUser.ID).Return(credentials, nil)

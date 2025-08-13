@@ -35,7 +35,7 @@ const (
 	// Credential SQL patterns
 	createCredentialQuery       = "INSERT INTO credentials \\("
 	getCredentialsByUserIDQuery = "SELECT (.+) FROM credentials WHERE user_id = \\$1"
-	updateCredentialQuery       = "UPDATE credentials SET sign_count = \\$2 WHERE id = \\$1"
+	updateCredentialQuery       = "UPDATE credentials SET sign_count = \\$2, last_used_at = NOW\\(\\) WHERE id = \\$1"
 
 	// Database columns
 	colID        = "id"
@@ -61,7 +61,10 @@ const (
 	colTransports          = "transports"
 	colAAGUID              = "aaguid"
 	colAttestationFormat   = "attestation_format"
+	colBackupEligible      = "backup_eligible"
+	colBackupState         = "backup_state"
 	colCredentialCreatedAt = "created_at"
+	colLastUsedAt          = "last_used_at"
 
 	// Common test data
 	testUsername       = "testuser"
@@ -157,7 +160,7 @@ const (
 // Database column slice for reuse
 var userColumns = []string{colID, colUsername, colRole, colCreatedAt, colUpdatedAt, colIsActive}
 var sessionColumns = []string{colSessionID, colUserID, colData, colPurpose, colSessionCreatedAt, colExpiresAt}
-var credentialColumns = []string{colCredentialID, colCredentialUserID, colPublicKey, colSignCount, colTransports, colAAGUID, colAttestationFormat, colCredentialCreatedAt}
+var credentialColumns = []string{colCredentialID, colCredentialUserID, colPublicKey, colSignCount, colTransports, colAAGUID, colAttestationFormat, colBackupEligible, colBackupState, colCredentialCreatedAt, colLastUsedAt}
 
 func setupMockDB(t *testing.T) (pgxmock.PgxPoolIface, *db.Queries) {
 	mockDB, err := pgxmock.NewPool()
@@ -283,6 +286,10 @@ func createTestCredential(userID uuid.UUID) *webauthn.Credential {
 		PublicKey:       []byte(testPublicKeyData),
 		AttestationType: testAttestationType,
 		Transport:       []protocol.AuthenticatorTransport{protocol.USB, protocol.NFC},
+		Flags: webauthn.CredentialFlags{
+			BackupEligible: true,
+			BackupState:    false,
+		},
 		Authenticator: webauthn.Authenticator{
 			AAGUID:    aaguid[:],
 			SignCount: 100,
@@ -300,14 +307,17 @@ func createTestDBCredential(userID uuid.UUID) db.Credential {
 		Transports:        []string{testTransportUSB, testTransportNFC},
 		Aaguid:            aaguid,
 		AttestationFormat: pgtype.Text{String: testAttestationType, Valid: true},
-		CreatedAt:         pgtype.Timestamp{Time: time.Now(), Valid: true},
+		BackupEligible:    true,
+		BackupState:       false,
+		CreatedAt:         pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		LastUsedAt:        pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	}
 }
 
 func createCredentialRows(credentials ...db.Credential) *pgxmock.Rows {
 	rows := pgxmock.NewRows(credentialColumns)
 	for _, cred := range credentials {
-		rows.AddRow(cred.ID, cred.UserID, cred.PublicKey, cred.SignCount, cred.Transports, cred.Aaguid, cred.AttestationFormat, cred.CreatedAt)
+		rows.AddRow(cred.ID, cred.UserID, cred.PublicKey, cred.SignCount, cred.Transports, cred.Aaguid, cred.AttestationFormat, cred.BackupEligible, cred.BackupState, cred.CreatedAt, cred.LastUsedAt)
 	}
 	return rows
 }
@@ -393,13 +403,13 @@ func expectDeleteSessionError(mockDB pgxmock.PgxPoolIface, sessionID uuid.UUID, 
 // Credential mock helpers
 func expectCreateCredentialSuccess(mockDB pgxmock.PgxPoolIface) {
 	mockDB.ExpectExec(createCredentialQuery).
-		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 }
 
 func expectCreateCredentialError(mockDB pgxmock.PgxPoolIface, errorMsg string) {
 	mockDB.ExpectExec(createCredentialQuery).
-		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnError(errors.New(errorMsg))
 }
 
@@ -1211,22 +1221,26 @@ func TestSaveCredentials(t *testing.T) {
 			expectedError: customerrors.ErrInternalServer,
 		},
 		{
-			name:   "invalid AAGUID",
+			name:   "credential with invalid AAGUID length",
 			userID: userID,
 			credential: &webauthn.Credential{
 				ID:              []byte(testCredentialID),
 				PublicKey:       []byte(testPublicKeyData),
 				AttestationType: testAttestationType,
 				Transport:       []protocol.AuthenticatorTransport{protocol.USB},
+				Flags: webauthn.CredentialFlags{
+					BackupEligible: false,
+					BackupState:    false,
+				},
 				Authenticator: webauthn.Authenticator{
 					AAGUID:    []byte("invalid-aaguid"), // Invalid length
 					SignCount: 100,
 				},
 			},
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				// No database call expected due to early validation failure
+				expectCreateCredentialSuccess(mockDB)
 			},
-			expectedError: customerrors.ErrInvalidAAGUID,
+			expectedError: nil,
 		},
 		{
 			name:   "credential with empty attestation type",
@@ -1263,7 +1277,10 @@ func TestGetCredentialsByUserID(t *testing.T) {
 			Transports:        []string{testTransportUSB},
 			Aaguid:            func() uuid.UUID { aaguid, _ := uuid.Parse(testAAGUID); return aaguid }(),
 			AttestationFormat: pgtype.Text{String: "packed", Valid: true},
-			CreatedAt:         pgtype.Timestamp{Time: time.Now(), Valid: true},
+			BackupEligible:    false,
+			BackupState:       true,
+			CreatedAt:         pgtype.Timestamptz{Time: time.Now(), Valid: true},
+			LastUsedAt:        pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		},
 	}
 

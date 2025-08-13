@@ -26,14 +26,19 @@ func New(u db.User, creds []db.Credential) *WebAuthnUser {
 	for _, c := range creds {
 		transports := newTransports(c)
 		attestationFormat := convertAttestationFormat(c)
+		aaguid := convertAAGUID(c)
 
 		webauthnCreds = append(webauthnCreds, webauthn.Credential{
 			ID:              c.ID,
 			PublicKey:       c.PublicKey,
 			AttestationType: attestationFormat,
 			Transport:       transports,
+			Flags: webauthn.CredentialFlags{
+				BackupEligible: c.BackupEligible,
+				BackupState:    c.BackupState,
+			},
 			Authenticator: webauthn.Authenticator{
-				AAGUID:    c.Aaguid[:],
+				AAGUID:    aaguid,
 				SignCount: uint32(c.SignCount),
 			},
 		})
@@ -53,6 +58,13 @@ func convertAttestationFormat(c db.Credential) string {
 		attestationFormat = c.AttestationFormat.String
 	}
 	return attestationFormat
+}
+
+func convertAAGUID(c db.Credential) []byte {
+	if c.Aaguid != uuid.Nil {
+		return c.Aaguid[:]
+	}
+	return nil
 }
 
 func newTransports(c db.Credential) []protocol.AuthenticatorTransport {

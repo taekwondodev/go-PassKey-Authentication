@@ -17,7 +17,10 @@ type Credential struct {
 	Transports        []string
 	Aaguid            uuid.UUID
 	AttestationFormat pgtype.Text
-	CreatedAt         pgtype.Timestamp
+	BackupEligible    bool
+	BackupState       bool
+	CreatedAt         pgtype.Timestamptz
+	LastUsedAt        pgtype.Timestamptz
 }
 
 type User struct {

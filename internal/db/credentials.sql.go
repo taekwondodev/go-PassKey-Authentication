@@ -14,10 +14,10 @@ import (
 
 const createCredential = `-- name: CreateCredential :exec
 INSERT INTO credentials (
-    id, user_id, public_key, sign_count, transports, aaguid, attestation_format
+    id, user_id, public_key, sign_count, transports, aaguid, attestation_format, backup_eligible, backup_state
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 `
 
@@ -29,6 +29,8 @@ type CreateCredentialParams struct {
 	Transports        []string
 	Aaguid            uuid.UUID
 	AttestationFormat pgtype.Text
+	BackupEligible    bool
+	BackupState       bool
 }
 
 func (q *Queries) CreateCredential(ctx context.Context, arg CreateCredentialParams) error {
@@ -40,12 +42,14 @@ func (q *Queries) CreateCredential(ctx context.Context, arg CreateCredentialPara
 		arg.Transports,
 		arg.Aaguid,
 		arg.AttestationFormat,
+		arg.BackupEligible,
+		arg.BackupState,
 	)
 	return err
 }
 
 const getCredentialsByUserID = `-- name: GetCredentialsByUserID :many
-SELECT id, user_id, public_key, sign_count, transports, aaguid, attestation_format, created_at FROM credentials WHERE user_id = $1
+SELECT id, user_id, public_key, sign_count, transports, aaguid, attestation_format, backup_eligible, backup_state, created_at, last_used_at FROM credentials WHERE user_id = $1
 `
 
 func (q *Queries) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) ([]Credential, error) {
@@ -65,7 +69,10 @@ func (q *Queries) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) 
 			&i.Transports,
 			&i.Aaguid,
 			&i.AttestationFormat,
+			&i.BackupEligible,
+			&i.BackupState,
 			&i.CreatedAt,
+			&i.LastUsedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -78,7 +85,11 @@ func (q *Queries) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) 
 }
 
 const updateCredentialSignCount = `-- name: UpdateCredentialSignCount :exec
-UPDATE credentials SET sign_count = $2 WHERE id = $1
+UPDATE credentials
+SET
+    sign_count = $2,
+    last_used_at = NOW()
+WHERE id = $1
 `
 
 type UpdateCredentialSignCountParams struct {

@@ -6,7 +6,10 @@ CREATE TABLE credentials (
     transports TEXT[],
     aaguid UUID,
     attestation_format TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    backup_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+    backup_state BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    last_used_at TIMESTAMP WITH TIME ZONE
 );
 
 CREATE INDEX idx_credentials_user_id ON credentials(user_id);
