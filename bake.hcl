@@ -11,7 +11,7 @@ group "default" {
 }
 
 group "test" {
-  targets = ["test-runner"]
+  targets = ["test"]
 }
 
 target "server" {
@@ -28,7 +28,7 @@ target "server" {
   platforms = ["linux/amd64", "linux/arm64"]
 }
 
-target "test-runner" {
+target "test" {
   dockerfile = "Dockerfile"
   context = "."
   target = "test"

@@ -27,6 +27,7 @@ type User struct {
 	ID        uuid.UUID
 	Username  string
 	Role      string
+	Status    string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 	IsActive  bool

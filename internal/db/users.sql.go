@@ -11,9 +11,18 @@ import (
 	"github.com/google/uuid"
 )
 
+const activateUser = `-- name: ActivateUser :exec
+UPDATE users SET status = 'active' WHERE id = $1
+`
+
+func (q *Queries) ActivateUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, activateUser, id)
+	return err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username) VALUES ($1)
-RETURNING id, username, role, created_at, updated_at, is_active
+RETURNING id, username, role, status, created_at, updated_at, is_active
 `
 
 func (q *Queries) CreateUser(ctx context.Context, username string) (User, error) {
@@ -23,6 +32,7 @@ func (q *Queries) CreateUser(ctx context.Context, username string) (User, error)
 		&i.ID,
 		&i.Username,
 		&i.Role,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsActive,
@@ -32,7 +42,7 @@ func (q *Queries) CreateUser(ctx context.Context, username string) (User, error)
 
 const createUserWithRole = `-- name: CreateUserWithRole :one
 INSERT INTO users (username, role) VALUES ($1, $2)
-RETURNING id, username, role, created_at, updated_at, is_active
+RETURNING id, username, role, status, created_at, updated_at, is_active
 `
 
 type CreateUserWithRoleParams struct {
@@ -47,6 +57,7 @@ func (q *Queries) CreateUserWithRole(ctx context.Context, arg CreateUserWithRole
 		&i.ID,
 		&i.Username,
 		&i.Role,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsActive,
@@ -55,7 +66,7 @@ func (q *Queries) CreateUserWithRole(ctx context.Context, arg CreateUserWithRole
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, role, created_at, updated_at, is_active FROM users WHERE id = $1
+SELECT id, username, role, status, created_at, updated_at, is_active FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -65,6 +76,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.ID,
 		&i.Username,
 		&i.Role,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsActive,
@@ -73,7 +85,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, role, created_at, updated_at, is_active FROM users WHERE username = $1
+SELECT id, username, role, status, created_at, updated_at, is_active FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -83,6 +95,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.ID,
 		&i.Username,
 		&i.Role,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsActive,

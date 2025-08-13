@@ -90,6 +90,7 @@ func (s *service) FinishRegister(ctx context.Context, req *dto.FinishRequest) (*
 	}
 
 	go s.deleteSession(sessionUUID)
+	go s.activateUser(user.ID)
 
 	return &dto.MessageResponse{
 		Message: "Registration completed successfully!",
@@ -194,5 +195,14 @@ func (s *service) deleteSession(sessionUUID uuid.UUID) {
 
 	if err := s.repo.DeleteSession(ctx, sessionUUID); err != nil {
 		fmt.Println("delete session not completed: ", err)
+	}
+}
+
+func (s *service) activateUser(userID uuid.UUID) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	if err := s.repo.ActivateUser(ctx, userID); err != nil {
+		fmt.Println("failed to activate user: ", err)
 	}
 }

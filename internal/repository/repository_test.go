@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ const (
 	selectUserByUsernameQuery = "SELECT (.+) FROM users WHERE username = \\$1"
 	insertUserQuery           = "INSERT INTO users \\(username\\) VALUES \\(\\$1\\)"
 	insertUserWithRoleQuery   = "INSERT INTO users \\(username, role\\) VALUES \\(\\$1, \\$2\\)"
+	activateUserQuery         = "UPDATE users SET status = 'active' WHERE id = \\$1"
 
 	// Session SQL patterns
 	createWebAuthnSessionQuery = "INSERT INTO webauthn_sessions \\(id, user_id, data, purpose, expires_at\\)"
@@ -41,6 +43,7 @@ const (
 	colID        = "id"
 	colUsername  = "username"
 	colRole      = "role"
+	colStatus    = "status"
 	colCreatedAt = "created_at"
 	colUpdatedAt = "updated_at"
 	colIsActive  = "is_active"
@@ -68,9 +71,11 @@ const (
 
 	// Common test data
 	testUsername       = "testuser"
-	testAdminUsername  = "adminuser"
-	testExistingUser   = "existinguser"
-	testInactiveUser   = "inactiveuser"
+	testAdminUsername  = "admin"
+	testExistingUser   = "existing"
+	testInactiveUser   = "inactive"
+	testActiveUser     = "active"
+	testPendingUser    = "pending"
 	testUnicodeUser    = "用户名"
 	testCamelCaseUser  = "TestUser"
 	testEmailUser      = "user@domain.com"
@@ -158,7 +163,7 @@ const (
 )
 
 // Database column slice for reuse
-var userColumns = []string{colID, colUsername, colRole, colCreatedAt, colUpdatedAt, colIsActive}
+var userColumns = []string{colID, colUsername, colRole, colStatus, colCreatedAt, colUpdatedAt, colIsActive}
 var sessionColumns = []string{colSessionID, colUserID, colData, colPurpose, colSessionCreatedAt, colExpiresAt}
 var credentialColumns = []string{colCredentialID, colCredentialUserID, colPublicKey, colSignCount, colTransports, colAAGUID, colAttestationFormat, colBackupEligible, colBackupState, colCredentialCreatedAt, colLastUsedAt}
 
@@ -226,6 +231,7 @@ func createTestUser(username, role string, isActive bool) db.User {
 		ID:        uuid.New(),
 		Username:  username,
 		Role:      role,
+		Status:    "pending",
 		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		UpdatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		IsActive:  isActive,
@@ -234,12 +240,12 @@ func createTestUser(username, role string, isActive bool) db.User {
 
 func createUserRows(user db.User) *pgxmock.Rows {
 	return pgxmock.NewRows(userColumns).
-		AddRow(user.ID, user.Username, user.Role, user.CreatedAt, user.UpdatedAt, user.IsActive)
+		AddRow(user.ID, user.Username, user.Role, user.Status, user.CreatedAt, user.UpdatedAt, user.IsActive)
 }
 
-func createUserRowsFromData(username, role string, isActive bool) *pgxmock.Rows {
-	user := createTestUser(username, role, isActive)
-	return createUserRows(user)
+func createUserRowsFromData(userID uuid.UUID, username, role, status string) *pgxmock.Rows {
+	return pgxmock.NewRows(userColumns).
+		AddRow(userID, username, role, status, pgtype.Timestamptz{Time: time.Now(), Valid: true}, pgtype.Timestamptz{Time: time.Now(), Valid: true}, true)
 }
 
 // Session helper functions
@@ -326,25 +332,25 @@ func createCredentialRows(credentials ...db.Credential) *pgxmock.Rows {
 func expectUserNotFound(mockDB pgxmock.PgxPoolIface, username string) {
 	mockDB.ExpectQuery(selectUserByUsernameQuery).
 		WithArgs(username).
-		WillReturnError(errors.New(errUserNotFound))
+		WillReturnError(sql.ErrNoRows)
 }
 
-func expectUserFound(mockDB pgxmock.PgxPoolIface, username, role string, isActive bool) {
-	rows := createUserRowsFromData(username, role, isActive)
+func expectUserFound(mockDB pgxmock.PgxPoolIface, username, role string, status string) {
+	rows := createUserRowsFromData(uuid.New(), username, role, status)
 	mockDB.ExpectQuery(selectUserByUsernameQuery).
 		WithArgs(username).
 		WillReturnRows(rows)
 }
 
 func expectCreateUser(mockDB pgxmock.PgxPoolIface, username string) {
-	rows := createUserRowsFromData(username, roleUser, true)
+	rows := createUserRowsFromData(uuid.New(), username, roleUser, "pending")
 	mockDB.ExpectQuery(insertUserQuery).
 		WithArgs(username).
 		WillReturnRows(rows)
 }
 
 func expectCreateUserWithRole(mockDB pgxmock.PgxPoolIface, username, role string) {
-	rows := createUserRowsFromData(username, role, true)
+	rows := createUserRowsFromData(uuid.New(), username, role, "pending")
 	mockDB.ExpectQuery(insertUserWithRoleQuery).
 		WithArgs(username, role).
 		WillReturnRows(rows)
@@ -438,6 +444,18 @@ func expectUpdateCredentialError(mockDB pgxmock.PgxPoolIface, credentialID []byt
 		WillReturnError(errors.New(errorMsg))
 }
 
+func expectActivateUserSuccess(mockDB pgxmock.PgxPoolIface, userID uuid.UUID) {
+	mockDB.ExpectExec(activateUserQuery).
+		WithArgs(userID).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+}
+
+func expectActivateUserError(mockDB pgxmock.PgxPoolIface, userID uuid.UUID) {
+	mockDB.ExpectExec(activateUserQuery).
+		WithArgs(userID).
+		WillReturnError(errors.New("database error"))
+}
+
 // Validation helpers
 func validateUserBasics(t *testing.T, user db.User, expectedUsername, expectedRole string) {
 	if user.Username != expectedUsername {
@@ -451,16 +469,20 @@ func validateUserBasics(t *testing.T, user db.User, expectedUsername, expectedRo
 func validateActiveUser(t *testing.T, user db.User, expectedUsername, expectedRole string) {
 	validateUserBasics(t, user, expectedUsername, expectedRole)
 	if !user.IsActive {
-		t.Error("Expected user to be active")
+		t.Errorf("Expected user to be active")
+	}
+	if user.Status != "active" {
+		t.Errorf("Expected status 'active', got '%s'", user.Status)
 	}
 }
 
-func validateInactiveUser(t *testing.T, user db.User, expectedUsername string) {
-	if user.Username != expectedUsername {
-		t.Errorf("Expected username '%s', got '%s'", expectedUsername, user.Username)
-	}
+func validateInactiveUser(t *testing.T, user db.User, expectedUsername, expectedRole string) {
+	validateUserBasics(t, user, expectedUsername, expectedRole)
 	if user.IsActive {
-		t.Error("Expected user to be inactive")
+		t.Errorf("Expected user to be inactive")
+	}
+	if user.Status != "pending" {
+		t.Errorf("Expected status 'pending', got '%s'", user.Status)
 	}
 }
 
@@ -538,6 +560,13 @@ type blacklistTokenTestCase struct {
 	description   string
 }
 
+type activateUserTestCase struct {
+	name          string
+	userID        uuid.UUID
+	setupMock     func(pgxmock.PgxPoolIface, uuid.UUID)
+	expectedError error
+}
+
 type isTokenBlacklistedTestCase struct {
 	name           string
 	token          string
@@ -559,7 +588,7 @@ func TestSaveUser(t *testing.T) {
 			},
 			expectedError: nil,
 			validateUser: func(t *testing.T, user db.User) {
-				validateActiveUser(t, user, testUsername, roleUser)
+				validateUserBasics(t, user, testUsername, roleUser)
 			},
 		},
 		{
@@ -572,18 +601,39 @@ func TestSaveUser(t *testing.T) {
 			},
 			expectedError: nil,
 			validateUser: func(t *testing.T, user db.User) {
-				validateActiveUser(t, user, testAdminUsername, roleAdmin)
+				validateUserBasics(t, user, testAdminUsername, roleAdmin)
 			},
 		},
 		{
-			name:     descUserAlreadyExists,
+			name:     "user already exists with active status",
 			username: testExistingUser,
 			role:     "",
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testExistingUser, roleUser, true)
+				rows := createUserRowsFromData(uuid.New(), testExistingUser, roleUser, "active")
+				mockDB.ExpectQuery(selectUserByUsernameQuery).
+					WithArgs(testExistingUser).
+					WillReturnRows(rows)
 			},
 			expectedError: customerrors.ErrUsernameAlreadyExists,
 			validateUser:  nil,
+		},
+		{
+			name:     "user already exists with pending status - return existing user",
+			username: testPendingUser,
+			role:     "",
+			setupMock: func(mockDB pgxmock.PgxPoolIface) {
+				rows := createUserRowsFromData(uuid.New(), testPendingUser, roleUser, "pending")
+				mockDB.ExpectQuery(selectUserByUsernameQuery).
+					WithArgs(testPendingUser).
+					WillReturnRows(rows)
+			},
+			expectedError: nil,
+			validateUser: func(t *testing.T, user db.User) {
+				validateUserBasics(t, user, testPendingUser, roleUser)
+				if user.Status != "pending" {
+					t.Errorf("Expected status 'pending', got '%s'", user.Status)
+				}
+			},
 		},
 		{
 			name:     descDatabaseError + " during user creation without role",
@@ -618,7 +668,7 @@ func TestGetUserByUsername(t *testing.T) {
 			name:     descSuccessfulRetrieval,
 			username: testUsername,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testUsername, roleUser, true)
+				expectUserFound(mockDB, testUsername, roleUser, "active")
 			},
 			expectedError: nil,
 			validateUser: func(t *testing.T, user db.User) {
@@ -649,7 +699,7 @@ func TestGetUserByUsername(t *testing.T) {
 			name:     "user with admin role",
 			username: testAdminUsername,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testAdminUsername, roleAdmin, true)
+				expectUserFound(mockDB, testAdminUsername, roleAdmin, "active")
 			},
 			expectedError: nil,
 			validateUser: func(t *testing.T, user db.User) {
@@ -657,14 +707,24 @@ func TestGetUserByUsername(t *testing.T) {
 			},
 		},
 		{
-			name:     "inactive user",
+			name:     "user with pending status",
 			username: testInactiveUser,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testInactiveUser, roleUser, false)
+				rows := pgxmock.NewRows(userColumns).
+					AddRow(uuid.New(), testInactiveUser, roleUser, "pending", pgtype.Timestamptz{Time: time.Now(), Valid: true}, pgtype.Timestamptz{Time: time.Now(), Valid: true}, false)
+				mockDB.ExpectQuery(selectUserByUsernameQuery).
+					WithArgs(testInactiveUser).
+					WillReturnRows(rows)
 			},
 			expectedError: nil,
 			validateUser: func(t *testing.T, user db.User) {
-				validateInactiveUser(t, user, testInactiveUser)
+				validateUserBasics(t, user, testInactiveUser, roleUser)
+				if user.IsActive {
+					t.Errorf("Expected user to be inactive")
+				}
+				if user.Status != "pending" {
+					t.Errorf("Expected status 'pending', got '%s'", user.Status)
+				}
 			},
 		},
 		{
@@ -724,7 +784,7 @@ func TestGetUserByUsername_EdgeCases(t *testing.T) {
 			name:     "unicode username",
 			username: testUnicodeUser,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testUnicodeUser, roleUser, true)
+				expectUserFound(mockDB, testUnicodeUser, roleUser, "active")
 			},
 			expectedError: nil,
 		},
@@ -732,7 +792,7 @@ func TestGetUserByUsername_EdgeCases(t *testing.T) {
 			name:     "case sensitive username lookup",
 			username: testCamelCaseUser,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testCamelCaseUser, roleUser, true)
+				expectUserFound(mockDB, testCamelCaseUser, roleUser, "active")
 			},
 			expectedError: nil,
 		},
@@ -749,7 +809,7 @@ func TestGetUserByUsername_EdgeCases(t *testing.T) {
 			name:     "user with special characters in username",
 			username: testEmailUser,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testEmailUser, roleUser, true)
+				expectUserFound(mockDB, testEmailUser, roleUser, "active")
 			},
 			expectedError: nil,
 		},
@@ -757,7 +817,7 @@ func TestGetUserByUsername_EdgeCases(t *testing.T) {
 			name:     "long username",
 			username: testLongUsername,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUserFound(mockDB, testLongUsername, roleUser, true)
+				expectUserFound(mockDB, testLongUsername, roleUser, "active")
 			},
 			expectedError: nil,
 		},
@@ -2035,7 +2095,7 @@ func BenchmarkGetUserByUsername(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		username := fmt.Sprintf("user%d", i)
-		expectUserFound(mockDB, username, roleUser, true)
+		expectUserFound(mockDB, username, roleUser, "active")
 		b.StartTimer()
 		repo.GetUserByUsername(context.Background(), username)
 	}
@@ -2065,7 +2125,7 @@ func TestUserRepository_IntegrationFlow(t *testing.T) {
 		}
 
 		// Step 3: Retrieve the created user
-		expectUserFound(mockDB, username, roleUser, true)
+		expectUserFound(mockDB, username, roleUser, "active")
 
 		retrievedUser, err := repo.GetUserByUsername(context.Background(), username)
 		if err != nil {
@@ -2077,7 +2137,7 @@ func TestUserRepository_IntegrationFlow(t *testing.T) {
 		}
 
 		// Step 4: Try to create duplicate user
-		expectUserFound(mockDB, username, roleUser, true)
+		expectUserFound(mockDB, username, roleUser, "active")
 
 		_, err = repo.SaveUser(context.Background(), username, "")
 		if err != customerrors.ErrUsernameAlreadyExists {
@@ -2086,6 +2146,54 @@ func TestUserRepository_IntegrationFlow(t *testing.T) {
 
 		checkMockExpectations(t, mockDB)
 	})
+}
+
+func TestActivateUser(t *testing.T) {
+	testCases := []activateUserTestCase{
+		{
+			name:   "successful activation",
+			userID: uuid.New(),
+			setupMock: func(mock pgxmock.PgxPoolIface, userID uuid.UUID) {
+				expectActivateUserSuccess(mock, userID)
+			},
+			expectedError: nil,
+		},
+		{
+			name:   "database error",
+			userID: uuid.New(),
+			setupMock: func(mock pgxmock.PgxPoolIface, userID uuid.UUID) {
+				expectActivateUserError(mock, userID)
+			},
+			expectedError: customerrors.ErrUserNotFound,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockDB, repo := setupRepoWithoutRedis(t)
+			defer mockDB.Close()
+
+			tc.setupMock(mockDB, tc.userID)
+
+			err := repo.ActivateUser(context.Background(), tc.userID)
+
+			if tc.expectedError != nil {
+				if err == nil {
+					t.Errorf("Expected error %v, but got nil", tc.expectedError)
+				} else if err.Error() != tc.expectedError.Error() {
+					t.Errorf("Expected error %v, but got %v", tc.expectedError, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, but got %v", err)
+				}
+			}
+
+			if err := mockDB.ExpectationsWereMet(); err != nil {
+				t.Errorf("Unmet expectations: %v", err)
+			}
+		})
+	}
 }
 
 // Stress test with multiple concurrent operations simulation

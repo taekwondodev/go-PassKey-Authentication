@@ -132,6 +132,11 @@ func (m *mockAuthRepository) IsTokenBlacklisted(ctx context.Context, token strin
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *mockAuthRepository) ActivateUser(ctx context.Context, userID uuid.UUID) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 // Test utilities
 func createTestWebAuthn(t *testing.T) *webauthn.WebAuthn {
 	config := &webauthn.Config{
@@ -161,6 +166,7 @@ func createTestUser(username, role string) db.User {
 		ID:       uuid.New(),
 		Username: username,
 		Role:     role,
+		Status:   "pending",
 	}
 }
 

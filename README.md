@@ -113,5 +113,5 @@ go-PassKey-Authentication/
 To run the unit tests run the command in the main directory:
 
 ```bash
-docker buildx bake test --progress=plain
+docker buildx bake -f bake.hcl test --progress=plain
 ```

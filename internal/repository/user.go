@@ -16,6 +16,7 @@ import (
 type UserRepository interface {
 	SaveUser(ctx context.Context, username, role string) (db.User, error)
 	GetUserByUsername(ctx context.Context, username string) (db.User, error)
+	ActivateUser(ctx context.Context, userID uuid.UUID) error
 	SaveRegisterSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
 	SaveLoginSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error)
 	GetRegisterSession(ctx context.Context, sessionID uuid.UUID) (db.WebauthnSession, error)
@@ -44,23 +45,28 @@ func New(queries *db.Queries, redis *config.RedisConfig) UserRepository {
 
 func (r *repository) SaveUser(ctx context.Context, username, role string) (db.User, error) {
 	user, err := r.queries.GetUserByUsername(ctx, username)
-	if err != nil {
-		if role != "" {
-			user, err = r.queries.CreateUserWithRole(ctx, db.CreateUserWithRoleParams{
-				Username: username,
-				Role:     role,
-			})
-		} else {
-			user, err = r.queries.CreateUser(ctx, username)
+	if err == nil {
+		if user.Status == "active" {
+			return db.User{}, customerrors.ErrUsernameAlreadyExists
 		}
-		if err != nil {
-			return db.User{}, customerrors.ErrInternalServer
+		if user.Status == "pending" {
+			return user, nil
 		}
-
-		return user, nil
 	}
 
-	return user, customerrors.ErrUsernameAlreadyExists
+	if role != "" {
+		user, err = r.queries.CreateUserWithRole(ctx, db.CreateUserWithRoleParams{
+			Username: username,
+			Role:     role,
+		})
+	} else {
+		user, err = r.queries.CreateUser(ctx, username)
+	}
+	if err != nil {
+		return db.User{}, customerrors.ErrInternalServer
+	}
+
+	return user, nil
 }
 
 func (r *repository) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
@@ -70,4 +76,13 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (db
 	}
 
 	return user, nil
+}
+
+func (r *repository) ActivateUser(ctx context.Context, userID uuid.UUID) error {
+	err := r.queries.ActivateUser(ctx, userID)
+	if err != nil {
+		return customerrors.ErrUserNotFound
+	}
+
+	return nil
 }
