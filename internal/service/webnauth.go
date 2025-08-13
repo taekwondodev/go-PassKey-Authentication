@@ -125,52 +125,34 @@ func (s *service) BeginLogin(ctx context.Context, username string) (*dto.BeginRe
 }
 
 func (s *service) FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto.TokenResponse, string, error) {
-	fmt.Printf("[DEBUG] Starting FinishLogin for user: %s\n", req.Username)
-
 	sessionUUID, user, err := s.getUser(ctx, req)
 	if err != nil {
-		fmt.Printf("[ERROR] Error getting user: %v\n", err)
 		return nil, "", err
 	}
 
 	creds, err := s.repo.GetCredentialsByUserID(ctx, user.ID)
 	if err != nil {
-		fmt.Printf("[ERROR] Error getting credentials: %v\n", err)
 		return nil, "", err
 	}
-	fmt.Printf("[DEBUG] Found %d credentials for user %s\n", len(creds), user.Username)
 
 	session, err := s.repo.GetLoginSession(ctx, sessionUUID)
 	if err != nil {
-		fmt.Printf("[ERROR] Error getting login session: %v\n", err)
 		return nil, "", err
 	}
 
 	var sessionData webauthn.SessionData
 	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
-		fmt.Printf("[ERROR] Error unmarshaling session data: %v\n", err)
 		return nil, "", customerrors.ErrInternalServer
 	}
 
 	parsedResponse, err := protocol.ParseCredentialRequestResponseBytes(req.Credentials)
 	if err != nil {
-		fmt.Printf("[ERROR] Error parsing credential response: %v\n", err)
 		return nil, "", customerrors.ErrInvalidCredentials
 	}
 
 	webauthnUser := models.New(user, creds)
-	fmt.Printf("[DEBUG] WebAuthn user has %d credentials\n", len(webauthnUser.WebAuthnCredentials()))
-
-	// Log credential details for debugging
-	for i, cred := range webauthnUser.WebAuthnCredentials() {
-		fmt.Printf("[DEBUG] Credential %d: ID=%x, Transports=%v, SignCount=%d\n",
-			i, cred.ID, cred.Transport, cred.Authenticator.SignCount)
-	}
-
 	credential, err := s.webauthn.ValidateLogin(webauthnUser, sessionData, parsedResponse)
 	if err != nil {
-		fmt.Printf("[ERROR] WebAuthn validation failed with detailed error: %v\n", err)
-		fmt.Printf("[ERROR] Error type: %T\n", err)
 		return nil, "", customerrors.ErrInvalidCredentials
 	}
 
