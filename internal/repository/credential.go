@@ -17,7 +17,7 @@ func (r *repository) SaveCredentials(ctx context.Context, userID uuid.UUID, cred
 	}
 
 	err = r.queries.CreateCredential(ctx, db.CreateCredentialParams{
-		ID:                string(credential.ID),
+		ID:                credential.ID,
 		UserID:            userID,
 		PublicKey:         credential.PublicKey,
 		SignCount:         int64(credential.Authenticator.SignCount),
@@ -44,7 +44,7 @@ func (r *repository) GetCredentialsByUserID(ctx context.Context, userID uuid.UUI
 
 func (r *repository) UpdateCredentials(ctx context.Context, credential *webauthn.Credential) error {
 	err := r.queries.UpdateCredentialSignCount(ctx, db.UpdateCredentialSignCountParams{
-		ID:        string(credential.ID),
+		ID:        credential.ID,
 		SignCount: int64(credential.Authenticator.SignCount),
 	})
 
@@ -61,7 +61,18 @@ func (r *repository) convertToDbCredential(credential *webauthn.Credential) ([]s
 		transports = append(transports, string(t))
 	}
 
-	aaguid, err := uuid.FromBytes(credential.Authenticator.AAGUID)
+	var aaguid uuid.UUID
+	var err error
+
+	if len(credential.Authenticator.AAGUID) == 16 {
+		aaguid, err = uuid.FromBytes(credential.Authenticator.AAGUID)
+		if err != nil {
+			return nil, uuid.Nil, pgtype.Text{}, err
+		}
+	} else {
+		// Use a null UUID for invalid/empty AAGUIDs
+		aaguid = uuid.Nil
+	}
 
 	var attestationFormat pgtype.Text
 	if credential.AttestationType != "" {
@@ -69,5 +80,5 @@ func (r *repository) convertToDbCredential(credential *webauthn.Credential) ([]s
 		attestationFormat.Valid = true
 	}
 
-	return transports, aaguid, attestationFormat, err
+	return transports, aaguid, attestationFormat, nil
 }

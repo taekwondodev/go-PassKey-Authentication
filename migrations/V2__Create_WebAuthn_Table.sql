@@ -1,10 +1,10 @@
 CREATE TABLE credentials (
-    id TEXT PRIMARY KEY,
+    id BYTEA PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     public_key BYTEA NOT NULL,
     sign_count BIGINT NOT NULL,
     transports TEXT[],
-    aaguid UUID NOT NULL,
+    aaguid UUID,
     attestation_format TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

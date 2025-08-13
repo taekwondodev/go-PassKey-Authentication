@@ -22,7 +22,7 @@ VALUES (
 `
 
 type CreateCredentialParams struct {
-	ID                string
+	ID                []byte
 	UserID            uuid.UUID
 	PublicKey         []byte
 	SignCount         int64
@@ -82,7 +82,7 @@ UPDATE credentials SET sign_count = $2 WHERE id = $1
 `
 
 type UpdateCredentialSignCountParams struct {
-	ID        string
+	ID        []byte
 	SignCount int64
 }
 

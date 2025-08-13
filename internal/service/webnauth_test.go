@@ -269,7 +269,7 @@ func (ms *beginLoginMockSetup) apply(mockRepo *mockAuthRepository) {
 		if ms.getCredentialsSuccess {
 			// Create a test credential for successful login
 			testCredential := db.Credential{
-				ID:                uuid.New().String(),
+				ID:                []byte("test-credential-id"),
 				UserID:            testUser.ID,
 				PublicKey:         []byte("test-public-key"),
 				SignCount:         0,

@@ -55,8 +55,8 @@ ORIGIN=http://localhost:3000
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=passkey_db
-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}?sslmode=disable
-REDIS_URL=redis://localhost:6379
+postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+REDIS_URL=redis://redis:6379
 HASH_SALT=$(openssl rand -hex 32)
 ```
 

@@ -28,7 +28,7 @@ func New(u db.User, creds []db.Credential) *WebAuthnUser {
 		attestationFormat := convertAttestationFormat(c)
 
 		webauthnCreds = append(webauthnCreds, webauthn.Credential{
-			ID:              []byte(c.ID),
+			ID:              c.ID,
 			PublicKey:       c.PublicKey,
 			AttestationType: attestationFormat,
 			Transport:       transports,
@@ -60,6 +60,12 @@ func newTransports(c db.Credential) []protocol.AuthenticatorTransport {
 	for _, t := range c.Transports {
 		transports = append(transports, protocol.AuthenticatorTransport(t))
 	}
+
+	if len(transports) == 0 {
+		// Most modern authenticators support internal transport
+		transports = append(transports, protocol.Internal)
+	}
+
 	return transports
 }
 

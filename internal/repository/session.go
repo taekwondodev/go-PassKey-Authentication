@@ -15,9 +15,12 @@ import (
 
 func (r *repository) SaveRegisterSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error) {
 	sessionID := uuid.New()
-	data, _ := json.Marshal(sessionData)
+	data, err := json.Marshal(sessionData)
+	if err != nil {
+		return uuid.Nil, customerrors.ErrInternalServer
+	}
 
-	err := r.queries.CreateWebAuthnSession(ctx, db.CreateWebAuthnSessionParams{
+	err = r.queries.CreateWebAuthnSession(ctx, db.CreateWebAuthnSessionParams{
 		ID:        sessionID,
 		UserID:    u.ID,
 		Purpose:   "registration",
@@ -30,9 +33,12 @@ func (r *repository) SaveRegisterSession(ctx context.Context, u models.WebAuthnU
 
 func (r *repository) SaveLoginSession(ctx context.Context, u models.WebAuthnUser, sessionData any) (uuid.UUID, error) {
 	sessionID := uuid.New()
-	data, _ := json.Marshal(sessionData)
+	data, err := json.Marshal(sessionData)
+	if err != nil {
+		return uuid.Nil, customerrors.ErrInternalServer
+	}
 
-	err := r.queries.CreateWebAuthnSession(ctx, db.CreateWebAuthnSessionParams{
+	err = r.queries.CreateWebAuthnSession(ctx, db.CreateWebAuthnSessionParams{
 		ID:        sessionID,
 		UserID:    u.ID,
 		Purpose:   "login",

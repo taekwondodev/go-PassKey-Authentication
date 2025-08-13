@@ -1,8 +1,10 @@
 services:
   server:
+    image: passkey-auth:latest
     build:
       context: .
       dockerfile: Dockerfile
+      target: server
     container_name: passkey-server
     ports:
       - "8080:8080"
@@ -14,6 +16,7 @@ services:
       - ORIGIN=${ORIGIN}
       - DATABASE_URL=${POSTGRES_URL}
       - REDIS_URL=${REDIS_URL}
+      - HASH_SALT=${HASH_SALT}
     depends_on:
       postgres:
         condition: service_healthy

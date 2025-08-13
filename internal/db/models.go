@@ -10,7 +10,7 @@ import (
 )
 
 type Credential struct {
-	ID                string
+	ID                []byte
 	UserID            uuid.UUID
 	PublicKey         []byte
 	SignCount         int64

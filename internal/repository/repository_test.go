@@ -293,7 +293,7 @@ func createTestCredential(userID uuid.UUID) *webauthn.Credential {
 func createTestDBCredential(userID uuid.UUID) db.Credential {
 	aaguid, _ := uuid.Parse(testAAGUID)
 	return db.Credential{
-		ID:                testCredentialID,
+		ID:                []byte(testCredentialID),
 		UserID:            userID,
 		PublicKey:         []byte(testPublicKeyData),
 		SignCount:         100,
@@ -416,13 +416,13 @@ func expectGetCredentialsByUserIDError(mockDB pgxmock.PgxPoolIface, userID uuid.
 		WillReturnError(errors.New(errorMsg))
 }
 
-func expectUpdateCredentialSuccess(mockDB pgxmock.PgxPoolIface, credentialID string, signCount int64) {
+func expectUpdateCredentialSuccess(mockDB pgxmock.PgxPoolIface, credentialID []byte, signCount int64) {
 	mockDB.ExpectExec(updateCredentialQuery).
 		WithArgs(credentialID, signCount).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 }
 
-func expectUpdateCredentialError(mockDB pgxmock.PgxPoolIface, credentialID string, signCount int64, errorMsg string) {
+func expectUpdateCredentialError(mockDB pgxmock.PgxPoolIface, credentialID []byte, signCount int64, errorMsg string) {
 	mockDB.ExpectExec(updateCredentialQuery).
 		WithArgs(credentialID, signCount).
 		WillReturnError(errors.New(errorMsg))
@@ -1256,7 +1256,7 @@ func TestGetCredentialsByUserID(t *testing.T) {
 	testCredentials := []db.Credential{
 		createTestDBCredential(userID),
 		{
-			ID:                "credential-2",
+			ID:                []byte("credential-2"),
 			UserID:            userID,
 			PublicKey:         []byte("public-key-2"),
 			SignCount:         200,
@@ -1279,8 +1279,8 @@ func TestGetCredentialsByUserID(t *testing.T) {
 				if len(credentials) != 2 {
 					t.Errorf("Expected 2 credentials, got %d", len(credentials))
 				}
-				if credentials[0].ID != testCredentialID {
-					t.Errorf("Expected credential ID %s, got %s", testCredentialID, credentials[0].ID)
+				if string(credentials[0].ID) != testCredentialID {
+					t.Errorf("Expected credential ID %s, got %s", testCredentialID, string(credentials[0].ID))
 				}
 			},
 		},
@@ -1336,7 +1336,7 @@ func TestUpdateCredentials(t *testing.T) {
 			name:       "successful credential update",
 			credential: updatedCredential,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUpdateCredentialSuccess(mockDB, string(updatedCredential.ID), int64(updatedCredential.Authenticator.SignCount))
+				expectUpdateCredentialSuccess(mockDB, updatedCredential.ID, int64(updatedCredential.Authenticator.SignCount))
 			},
 			expectedError: nil,
 		},
@@ -1344,7 +1344,7 @@ func TestUpdateCredentials(t *testing.T) {
 			name:       "database error during credential update",
 			credential: credential,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUpdateCredentialError(mockDB, string(credential.ID), int64(credential.Authenticator.SignCount), errDatabaseError)
+				expectUpdateCredentialError(mockDB, credential.ID, int64(credential.Authenticator.SignCount), errDatabaseError)
 			},
 			expectedError: customerrors.ErrInternalServer,
 		},
@@ -1356,7 +1356,7 @@ func TestUpdateCredentials(t *testing.T) {
 				return cred
 			}(),
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUpdateCredentialSuccess(mockDB, testCredentialID, 0)
+				expectUpdateCredentialSuccess(mockDB, []byte(testCredentialID), 0)
 			},
 			expectedError: nil,
 		},
@@ -1364,7 +1364,7 @@ func TestUpdateCredentials(t *testing.T) {
 			name:       "update non-existent credential",
 			credential: credential,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
-				expectUpdateCredentialError(mockDB, string(credential.ID), int64(credential.Authenticator.SignCount), "credential not found")
+				expectUpdateCredentialError(mockDB, credential.ID, int64(credential.Authenticator.SignCount), "credential not found")
 			},
 			expectedError: customerrors.ErrInternalServer,
 		},
@@ -1401,7 +1401,7 @@ func TestCredentialIntegrationFlow(t *testing.T) {
 
 		// Update credential
 		credential.Authenticator.SignCount = 200
-		expectUpdateCredentialSuccess(mockDB, string(credential.ID), int64(credential.Authenticator.SignCount))
+		expectUpdateCredentialSuccess(mockDB, credential.ID, int64(credential.Authenticator.SignCount))
 
 		err = repo.UpdateCredentials(context.Background(), credential)
 		if err != nil {
@@ -1939,7 +1939,7 @@ func BenchmarkUpdateCredentials(b *testing.B) {
 
 	runBenchmarkOperation(b,
 		func(i int) {
-			expectUpdateCredentialSuccess(mockDB, string(credential.ID), int64(credential.Authenticator.SignCount))
+			expectUpdateCredentialSuccess(mockDB, credential.ID, int64(credential.Authenticator.SignCount))
 		},
 		func() { repo.UpdateCredentials(context.Background(), credential) })
 }
