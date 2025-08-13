@@ -25,7 +25,7 @@ func (r *repository) SaveRegisterSession(ctx context.Context, u models.WebAuthnU
 		UserID:    u.ID,
 		Purpose:   "registration",
 		Data:      data,
-		ExpiresAt: pgtype.Timestamp{Time: time.Now().Add(30 * time.Minute), Valid: true},
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(30 * time.Minute), Valid: true},
 	})
 
 	return sessionID, err
@@ -43,7 +43,7 @@ func (r *repository) SaveLoginSession(ctx context.Context, u models.WebAuthnUser
 		UserID:    u.ID,
 		Purpose:   "login",
 		Data:      data,
-		ExpiresAt: pgtype.Timestamp{Time: time.Now().Add(30 * time.Minute), Valid: true},
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(30 * time.Minute), Valid: true},
 	})
 
 	return sessionID, err

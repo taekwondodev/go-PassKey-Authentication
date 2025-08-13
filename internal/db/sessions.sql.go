@@ -22,7 +22,7 @@ type CreateWebAuthnSessionParams struct {
 	UserID    uuid.UUID
 	Data      []byte
 	Purpose   string
-	ExpiresAt pgtype.Timestamp
+	ExpiresAt pgtype.Timestamptz
 }
 
 func (q *Queries) CreateWebAuthnSession(ctx context.Context, arg CreateWebAuthnSessionParams) error {

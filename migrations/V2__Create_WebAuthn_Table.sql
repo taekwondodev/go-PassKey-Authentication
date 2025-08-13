@@ -19,8 +19,8 @@ CREATE TABLE webauthn_sessions (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     data JSONB NOT NULL,
     purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'login')),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE INDEX idx_webauthn_sessions_id_purpose ON webauthn_sessions(id, purpose);

@@ -268,8 +268,8 @@ func createTestSession(userID uuid.UUID, purpose string) db.WebauthnSession {
 		UserID:    userID,
 		Data:      data,
 		Purpose:   purpose,
-		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
-		ExpiresAt: pgtype.Timestamp{Time: time.Now().Add(30 * time.Minute), Valid: true},
+		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(30 * time.Minute), Valid: true},
 	}
 }
 

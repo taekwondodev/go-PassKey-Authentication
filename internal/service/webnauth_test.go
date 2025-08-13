@@ -169,7 +169,7 @@ func createTestSession(userID uuid.UUID, data []byte) db.WebauthnSession {
 		ID:        uuid.New(),
 		UserID:    userID,
 		Data:      data,
-		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	}
 }
 

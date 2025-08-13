@@ -37,6 +37,6 @@ type WebauthnSession struct {
 	UserID    uuid.UUID
 	Data      []byte
 	Purpose   string
-	CreatedAt pgtype.Timestamp
-	ExpiresAt pgtype.Timestamp
+	CreatedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
 }
