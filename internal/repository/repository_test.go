@@ -142,6 +142,7 @@ const (
 	msgExpectedNoErrorUpdating       = "Expected no error updating credential, got %v"
 	msgExpectedNoErrorChecking       = "Expected no error checking token, got %v"
 	msgExpectedNoErrorBlacklisting   = "Expected no error blacklisting token, got %v"
+	msgExpectedStatusPending         = "Expected status 'pending', got '%s'"
 
 	// Common suffix strings
 	suffixRegisterSession            = " - register session"
@@ -453,7 +454,7 @@ func expectActivateUserSuccess(mockDB pgxmock.PgxPoolIface, userID uuid.UUID) {
 func expectActivateUserError(mockDB pgxmock.PgxPoolIface, userID uuid.UUID) {
 	mockDB.ExpectExec(activateUserQuery).
 		WithArgs(userID).
-		WillReturnError(errors.New("database error"))
+		WillReturnError(errors.New(errDatabaseError))
 }
 
 // Validation helpers
@@ -482,7 +483,7 @@ func validateInactiveUser(t *testing.T, user db.User, expectedUsername, expected
 		t.Errorf("Expected user to be inactive")
 	}
 	if user.Status != "pending" {
-		t.Errorf("Expected status 'pending', got '%s'", user.Status)
+		t.Errorf(msgExpectedStatusPending, user.Status)
 	}
 }
 
@@ -631,7 +632,7 @@ func TestSaveUser(t *testing.T) {
 			validateUser: func(t *testing.T, user db.User) {
 				validateUserBasics(t, user, testPendingUser, roleUser)
 				if user.Status != "pending" {
-					t.Errorf("Expected status 'pending', got '%s'", user.Status)
+					t.Errorf(msgExpectedStatusPending, user.Status)
 				}
 			},
 		},
@@ -723,7 +724,7 @@ func TestGetUserByUsername(t *testing.T) {
 					t.Errorf("Expected user to be inactive")
 				}
 				if user.Status != "pending" {
-					t.Errorf("Expected status 'pending', got '%s'", user.Status)
+					t.Errorf(msgExpectedStatusPending, user.Status)
 				}
 			},
 		},
