@@ -23,7 +23,7 @@ A modern passwordless authentication system built with Go and WebAuthn. This pro
 
 | Category             | Technology             |
 |----------------------|------------------------|
-| **Language**         | Go 1.24.5              |
+| **Language**         | Go 1.25.0              |
 | **Database**         | PostgreSQL 15+         |
 | **Session**          | Redis 7+               |
 | **Authentication**   | WebAuthn (go-webauthn) |
@@ -44,7 +44,7 @@ Complete API documentation is available in OpenAPI 3.0 format:
 
 ### Prerequisites
 
-- Go 1.24.5+ (locally)
+- Go 1.25.0+ (locally)
 - Docker
 
 ### Example Configuration

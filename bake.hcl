@@ -20,6 +20,7 @@ target "server" {
   target = "server"
   args = {
     GO_VERSION = "${GO_VERSION}"
+    GOEXPERIMENT = "jsonv2"
   }
   tags = [
     "passkey-auth:${TAG}",
@@ -34,6 +35,7 @@ target "test" {
   target = "test"
   args = {
     GO_VERSION = "${GO_VERSION}"
+    GOEXPERIMENT = "jsonv2"
     CACHE_BUST = timestamp()
   }
   tags = ["passkey-auth:test"]

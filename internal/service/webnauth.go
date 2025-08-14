@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"time"
 
@@ -69,8 +69,8 @@ func (s *service) FinishRegister(ctx context.Context, req *dto.FinishRequest) (*
 		return nil, err
 	}
 
-	var sessionData webauthn.SessionData
-	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
+	sessionData, err := s.parseSessionData(session)
+	if err != nil {
 		return nil, customerrors.ErrInternalServer
 	}
 
@@ -141,8 +141,8 @@ func (s *service) FinishLogin(ctx context.Context, req *dto.FinishRequest) (*dto
 		return nil, "", err
 	}
 
-	var sessionData webauthn.SessionData
-	if err := json.Unmarshal(session.Data, &sessionData); err != nil {
+	sessionData, err := s.parseSessionData(session)
+	if err != nil {
 		return nil, "", customerrors.ErrInternalServer
 	}
 
@@ -187,6 +187,12 @@ func (s *service) getUser(ctx context.Context, req *dto.FinishRequest) (uuid.UUI
 		return uuid.Nil, db.User{}, err
 	}
 	return sessionUUID, user, nil
+}
+
+func (s *service) parseSessionData(session db.WebauthnSession) (webauthn.SessionData, error) {
+	var sessionData webauthn.SessionData
+	err := json.Unmarshal(session.Data, &sessionData, json.RejectUnknownMembers(true))
+	return sessionData, err
 }
 
 func (s *service) deleteSession(sessionUUID uuid.UUID) {

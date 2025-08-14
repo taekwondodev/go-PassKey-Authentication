@@ -31,11 +31,8 @@ func (r FinishRequest) Validate() error {
 		return customerrors.ErrSessionIdInvalid
 	}
 
-	if len(r.Credentials) == 0 {
-		return customerrors.ErrInvalidCredentials
-	}
-	if !json.Valid(r.Credentials) {
-		return customerrors.ErrInvalidCredentials
+	if err := validateCredentialsJSON(r.Credentials); err != nil {
+		return err
 	}
 
 	return nil
@@ -48,5 +45,23 @@ func checkUsername(username string) error {
 	if len(username) < 3 {
 		return customerrors.ErrInvalidUsername
 	}
+	return nil
+}
+
+func validateCredentialsJSON(credentials json.RawMessage) error {
+	if len(credentials) == 0 {
+		return customerrors.ErrInvalidCredentials
+	}
+
+	if !json.Valid(credentials) {
+		return customerrors.ErrInvalidCredentials
+	}
+
+	// Need to be an object
+	trimmed := strings.TrimSpace(string(credentials))
+	if !strings.HasPrefix(trimmed, "{") {
+		return customerrors.ErrInvalidCredentials
+	}
+
 	return nil
 }

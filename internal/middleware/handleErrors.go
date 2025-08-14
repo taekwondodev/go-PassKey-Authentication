@@ -1,13 +1,11 @@
 package middleware
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
 )
-
-// con go 1.25 sostituire encoding/json
 
 type HandlerFunc func(w http.ResponseWriter, r *http.Request) error
 
@@ -29,5 +27,5 @@ func handleHttpError(w http.ResponseWriter, err error) {
 		Message: customerrors.GetMessage(err),
 	}
 
-	json.NewEncoder(w).Encode(res)
+	json.MarshalWrite(w, res)
 }

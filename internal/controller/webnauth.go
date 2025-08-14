@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/customerrors"
@@ -33,21 +33,6 @@ func New(authService service.AuthService, tokenCookie pkg.CookieHelper) AuthCont
 
 type Validator interface {
 	Validate() error
-}
-
-// da cambiaro con encoding/jsonv2
-
-func decodeAndValidate[T Validator](r *http.Request) (T, error) {
-	var req T
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return req, customerrors.ErrBadRequest
-	}
-
-	if err := req.Validate(); err != nil {
-		return req, err
-	}
-
-	return req, nil
 }
 
 func (c *controller) BeginRegister(w http.ResponseWriter, r *http.Request) error {
@@ -107,8 +92,23 @@ func (c *controller) FinishLogin(w http.ResponseWriter, r *http.Request) error {
 	return c.respond(w, http.StatusOK, res)
 }
 
+func decodeAndValidate[T Validator](r *http.Request) (T, error) {
+	defer r.Body.Close()
+	var req T
+
+	if err := json.UnmarshalRead(r.Body, &req, json.RejectUnknownMembers(true)); err != nil {
+		return req, customerrors.ErrBadRequest
+	}
+
+	if err := req.Validate(); err != nil {
+		return req, err
+	}
+
+	return req, nil
+}
+
 func (c *controller) respond(w http.ResponseWriter, status int, data any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(data)
+	return json.MarshalWrite(w, data)
 }
