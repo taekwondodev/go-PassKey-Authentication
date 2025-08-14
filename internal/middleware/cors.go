@@ -6,9 +6,9 @@ import (
 	"github.com/taekwondodev/go-PassKey-Authentication/internal/config"
 )
 
-var originConfig, _ = config.LoadOriginConfig()
-
 func CorsMiddleware(next http.Handler) http.HandlerFunc {
+	originConfig, protection := newCSRF()
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", originConfig.URL)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -22,6 +22,18 @@ func CorsMiddleware(next http.Handler) http.HandlerFunc {
 			return
 		}
 
+		if err := protection.Check(r); err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	}
+}
+
+func newCSRF() (*config.OriginConfig, *http.CrossOriginProtection) {
+	protection := http.NewCrossOriginProtection()
+	originConfig, _ := config.LoadOriginConfig()
+	protection.AddTrustedOrigin(originConfig.URL)
+	return originConfig, protection
 }

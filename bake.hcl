@@ -1,5 +1,5 @@
 variable "GO_VERSION" {
-  default = "1.24.5"
+  default = "1.25.0"
 }
 
 variable "TAG" {

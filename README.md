@@ -2,7 +2,7 @@
 
 # go-PassKey-Authentication
 
-![Go Version](https://img.shields.io/badge/Go-1.24.5-blue.svg)
+![Go Version](https://img.shields.io/badge/Go-1.25.0-blue.svg)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white)](https://redis.io/)
@@ -102,6 +102,7 @@ go-PassKey-Authentication/
 - **Redis token blacklisting** for secure logout and token invalidation
 - **Token rotation** on refresh to prevent replay attacks
 - **CORS** protection with configurable origins
+- **CSRF** protection for stateful sessions
 - **SQL injection** prevention with prepared statements
 - **ARGON2ID token hashing** for secure Redis storage
 - **Automatic TTL cleanup** of blacklisted tokens
