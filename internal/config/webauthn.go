@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 
@@ -16,5 +17,9 @@ func InitWebAuthn() (*webauthn.WebAuthn, error) {
 		RPDisplayName: "go-PassKey-Authentication",
 		RPID:          originConfig.RPID,
 		RPOrigins:     origins[:],
+		AuthenticatorSelection: protocol.AuthenticatorSelection{
+			RequireResidentKey: protocol.ResidentKeyRequired(),
+			UserVerification:   protocol.VerificationPreferred,
+		},
 	})
 }

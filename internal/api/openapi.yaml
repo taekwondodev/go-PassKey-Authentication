@@ -22,7 +22,7 @@ info:
       - Use `POST /logout` with an access token to invalidate it (blacklist in Redis)
 
     ## Security
-    - All endpoints support CORS for frontend integration
+    - All endpoints support CORS and CSRF for frontend integration
     - WebAuthn provides FIDO2-compliant passwordless authentication
     - Refresh tokens in HTTP-only cookies for enhanced security
     - Token blacklisting via Redis for secure logout

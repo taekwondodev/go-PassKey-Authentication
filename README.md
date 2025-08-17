@@ -11,13 +11,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Report Card](https://goreportcard.com/badge/github.com/taekwondodev/go-PassKey-Authentication)](https://goreportcard.com/report/github.com/taekwondodev/go-PassKey-Authentication)
 
-Modern passwordless authentication using WebAuthn and Go for web clients
+A modern passwordless authentication system built with Go and WebAuthn.
 
 </div>
 
 ## Overview
 
-A modern passwordless authentication system built with Go and WebAuthn. This project implements a complete passkey authentication flow with JWT tokens, PostgreSQL database, Redis token blacklisting, and Docker containerization. Features secure logout with token invalidation and automatic cleanup. Ready for web clients, need some minor adjustments for mobile clients. Support only localhost:3000 as client for testing purposes.
+This project implements a complete passkey authentication flow with JWT tokens, PostgreSQL database, Redis token blacklisting, and Docker containerization. Features secure logout with token invalidation and automatic cleanup. Support only one origin/bundle-id as client for testing purposes.
 
 ## Tech Stack
 
