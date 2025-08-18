@@ -36,9 +36,9 @@ func NewCookieHelper() (CookieHelper, error) {
 	}
 
 	config := &CookieConfig{
-		Secure:   originConfig.IsHTTPS,             // HTTP in development
-		SameSite: originConfig.GetCookieSameSite(), // Required for cross-origin cookies
-		Domain:   originConfig.Domain,              // Empty for localhost
+		Secure:   originConfig.IsHTTPS,
+		SameSite: originConfig.GetCookieSameSite(),
+		Domain:   originConfig.GetCookieDomain(),
 		Path:     "/",
 		HttpOnly: true,
 		MaxAge:   86400,

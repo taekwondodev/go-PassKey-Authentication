@@ -10,7 +10,7 @@ func CorsMiddleware(next http.Handler) http.HandlerFunc {
 	originConfig, protection := newCSRF()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", originConfig.URL)
+		w.Header().Set("Access-Control-Allow-Origin", originConfig.FrontendURL)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -34,6 +34,6 @@ func CorsMiddleware(next http.Handler) http.HandlerFunc {
 func newCSRF() (*config.OriginConfig, *http.CrossOriginProtection) {
 	protection := http.NewCrossOriginProtection()
 	originConfig, _ := config.LoadOriginConfig()
-	protection.AddTrustedOrigin(originConfig.URL)
+	protection.AddTrustedOrigin(originConfig.FrontendURL)
 	return originConfig, protection
 }

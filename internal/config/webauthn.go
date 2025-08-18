@@ -11,11 +11,11 @@ func InitWebAuthn() (*webauthn.WebAuthn, error) {
 		return nil, err
 	}
 
-	origins := [1]string{originConfig.URL}
+	origins := [1]string{originConfig.FrontendURL}
 
 	return webauthn.New(&webauthn.Config{
 		RPDisplayName: "go-PassKey-Authentication",
-		RPID:          originConfig.RPID,
+		RPID:          originConfig.BackendDomain,
 		RPOrigins:     origins[:],
 		AuthenticatorSelection: protocol.AuthenticatorSelection{
 			RequireResidentKey: protocol.ResidentKeyRequired(),

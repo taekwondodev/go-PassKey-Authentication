@@ -51,7 +51,8 @@ Complete API documentation is available in OpenAPI 3.0 format:
 
 ```bash
 JWT_SECRET=$(openssl rand -hex 32)
-ORIGIN=http://localhost:3000
+ORIGIN_FRONTEND=http://localhost:3000
+URL_BACKEND=http://localhost:8080
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=passkey_db
