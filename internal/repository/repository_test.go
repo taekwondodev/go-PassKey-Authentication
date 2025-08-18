@@ -1273,7 +1273,7 @@ func TestSaveCredentials(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:       "database error during credential save",
+			name:       descDatabaseError + " during credential save",
 			userID:     userID,
 			credential: createTestCredential(userID),
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
@@ -1419,7 +1419,7 @@ func TestUpdateCredentials(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:       "database error during credential update",
+			name:       descDatabaseError + " during credential update",
 			credential: credential,
 			setupMock: func(mockDB pgxmock.PgxPoolIface) {
 				expectUpdateCredentialError(mockDB, credential.ID, int64(credential.Authenticator.SignCount), errDatabaseError)
@@ -2160,7 +2160,7 @@ func TestActivateUser(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:   "database error",
+			name:   descDatabaseError,
 			userID: uuid.New(),
 			setupMock: func(mock pgxmock.PgxPoolIface, userID uuid.UUID) {
 				expectActivateUserError(mock, userID)
