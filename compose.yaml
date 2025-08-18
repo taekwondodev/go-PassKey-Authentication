@@ -13,7 +13,8 @@ services:
       - private_network
     environment:
       - JWT_SECRET=${JWT_SECRET}
-      - ORIGIN=${ORIGIN}
+      - URL_BACKEND=${URL_BACKEND}
+      - ORIGIN_FRONTEND=${ORIGIN_FRONTEND}
       - DATABASE_URL=${POSTGRES_URL}
       - REDIS_URL=${REDIS_URL}
       - HASH_SALT=${HASH_SALT}

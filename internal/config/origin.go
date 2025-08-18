@@ -18,11 +18,11 @@ type OriginConfig struct {
 func LoadOriginConfig() (*OriginConfig, error) {
 	frontendOrigin := os.Getenv("ORIGIN_FRONTEND")
 	if frontendOrigin == "" {
-		return nil, fmt.Errorf("ORIGIN is not defined")
+		return nil, fmt.Errorf("ORIGIN_FRONTEND is not defined")
 	}
 
 	backendURL := os.Getenv("URL_BACKEND")
-	if backendURL != "" {
+	if backendURL == "" {
 		return nil, fmt.Errorf("URL_BACKEND is not defined")
 	}
 
