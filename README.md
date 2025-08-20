@@ -53,10 +53,14 @@ Complete API documentation is available in OpenAPI 3.0 format:
 JWT_SECRET=$(openssl rand -hex 32)
 ORIGIN_FRONTEND=http://localhost:3000
 URL_BACKEND=http://localhost:8080
+
+# PostgreSQL Configuration
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=passkey_db
-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+
+# Redis Configuration
 REDIS_URL=redis://redis:6379
 HASH_SALT=$(openssl rand -hex 32)
 ```
